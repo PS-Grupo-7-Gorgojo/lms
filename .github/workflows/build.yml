@@ -38,13 +38,14 @@ jobs:
           
       - name: Set Branch
         run: |
-          export APPS_JSON='[{"url": "https://github.com/frappe/payments","branch": "version-15"},{"url": "https://github.com/ps-grupo-7-gorgojo/lms","branch": "main"}]'
+          export APPS_JSON='[{"url": "https://github.com/frappe/payments","branch": "version-15"},{"url": "https://github.com/PS-Grupo-7-Gorgojo/lms","branch": "main"}]'
           echo "APPS_JSON_BASE64=$(echo $APPS_JSON | base64 -w 0)" >> $GITHUB_ENV
           echo "FRAPPE_BRANCH=version-16" >> $GITHUB_ENV
 
       - name: Set Image Tag
         run: |
           echo "IMAGE_TAG=stable" >> $GITHUB_ENV
+          echo "REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
       - uses: actions/checkout@v4
         with:
           repository: frappe/frappe_docker
@@ -57,8 +58,8 @@ jobs:
           context: builds
           file: builds/images/layered/Containerfile
           tags: >
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }},
-            ghcr.io/${{ github.repository }}:${{ env.IMAGE_TAG }}
+            ghcr.io/${{ env.REPO_LOWER }}:${{ github.ref_name }},
+            ghcr.io/${{ env.REPO_LOWER }}:${{ env.IMAGE_TAG }}
           build-args: |
             "FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH }}"
             "APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}"
