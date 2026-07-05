@@ -134,10 +134,7 @@ You need Docker, docker-compose and git setup on your machine. Refer [Docker doc
     cd frappe-learning
 
     # Download the docker-compose file
-    wget -O docker-compose.yml https://raw.githubusercontent.com/frappe/lms/develop/docker/docker-compose.yml
-
-    # Download the setup script
-    wget -O init.sh https://raw.githubusercontent.com/frappe/lms/develop/docker/init.sh
+    wget -O docker-compose.yml https://raw.githubusercontent.com/PS-Grupo-7-Gorgojo/lms/develop/docker/docker-compose.yml
 
 **Step 2**: Run the container and daemonize it
 
