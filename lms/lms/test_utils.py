@@ -1074,7 +1074,7 @@ class TestUtils(BaseTestUtils):
 				"2024-01-31"
 			)
 
-			# Verifica que los filtros NO incluyan el parámetro False
+			# Verifica que los filtros NO incluyan el parametro False
 			self.assertIn(["Sales Invoice", "docstatus", "<", 2], filters)
 			self.assertIn(["Sales Invoice", "posting_date", ">=", "2024-01-01"], filters)
 			self.assertIn(["Sales Invoice", "posting_date", "<=", "2024-01-31"], filters)
