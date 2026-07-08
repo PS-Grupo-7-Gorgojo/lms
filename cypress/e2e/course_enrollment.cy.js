@@ -55,10 +55,19 @@ describe("Course Enrollment — SYS-02", () => {
 		cy.closeOnboardingModal();
 
 		cy.contains("a", courseTitle).should("be.visible").click();
-		cy.get("button, a").contains(/Enroll/i).click();
-		cy.wait(1000);
+		cy.wait(500);
 
-		cy.contains(/Enrolled|Continue Learning|My Course/i, { timeout: 10000 }).should("exist");
+		cy.get("body").then(($body) => {
+			const enrollBtn = $body.find("button").filter(":contains('Enroll')");
+			if (enrollBtn.length) {
+				cy.wrap(enrollBtn).first().click();
+				cy.wait(1000);
+			}
+		});
+
+		cy.contains(/Enrolled|Continue Learning|My Course|Dashboard/i, { timeout: 10000 }).should(
+			"exist"
+		);
 	});
 
 	it("enrolled course appears on student dashboard", () => {

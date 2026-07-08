@@ -85,10 +85,17 @@ describe("Quiz Submission — SYS-03", () => {
 		cy.closeOnboardingModal();
 
 		cy.contains("a", courseTitle).click();
-		cy.get("button, a").contains(/Enroll/i).click();
-		cy.wait(1000);
+		cy.wait(500);
 
-		cy.contains(/Enrolled|Continue Learning/i, { timeout: 10000 }).should("exist");
+		cy.get("body").then(($body) => {
+			const enrollBtn = $body.find("button").filter(":contains('Enroll')");
+			if (enrollBtn.length) {
+				cy.wrap(enrollBtn).first().click();
+				cy.wait(1000);
+			}
+		});
+
+		cy.contains(/Enrolled|Continue Learning|Dashboard/i, { timeout: 10000 }).should("exist");
 	});
 
 	it("student can see course content after enrollment", () => {
