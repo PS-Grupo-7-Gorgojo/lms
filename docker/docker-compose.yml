@@ -7,7 +7,7 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --skip-character-set-client-handshake
-      - --skip-innodb-read-only-compressed # Temporary fix for MariaDB 10.6
+      - --skip-innodb-read-only-compressed
     environment:
       MYSQL_ROOT_PASSWORD: 123
     volumes:
@@ -17,16 +17,55 @@ services:
     image: redis:alpine
 
   frappe:
-    image: frappe/bench:latest
-    command: bash /workspace/init.sh
+    image: ghcr.io/ps-grupo-7-gorgojo/lms:stable
+    working_dir: /home/frappe
+    user: root
     environment:
       - SHELL=/bin/bash
-    working_dir: /home/frappe
     volumes:
-      - .:/workspace
+      - lms-sites:/home/frappe/frappe-bench/sites
     ports:
       - 8000:8000
-      - 9000:9000
+    command: |
+      bash -c "
+
+      while ! timeout 1 bash -c 'cat < /dev/null > /dev/tcp/mariadb/3306' 2>/dev/null; do
+        sleep 1
+      done
+      echo '=== MariaDB listo ==='
+      
+      chown -R frappe:frappe /home/frappe/frappe-bench/sites
+      
+      exec su frappe << 'EOF'
+      cd /home/frappe/frappe-bench
+      
+      echo '=== Actualizando assets compilados en el volumen ==='
+      mkdir -p /home/frappe/frappe-bench/sites/assets
+      cp -R /home/frappe/assets_backup/* /home/frappe/frappe-bench/sites/assets/
+      
+      if [ ! -d /home/frappe/frappe-bench/sites/lms.localhost ]; then
+        echo '=== Creando Sitio LMS por primera vez... ==='
+        bench new-site lms.localhost --force --mariadb-root-password 123 --admin-password admin --no-mariadb-socket
+        bench --site lms.localhost install-app payments
+        bench --site lms.localhost install-app lms
+        bench --site lms.localhost set-config developer_mode 1
+        bench --site lms.localhost clear-cache
+        bench use lms.localhost
+      else
+        echo '=== Sitio LMS ya existe. Ejecutando migraciones de base de datos... ==='
+        bench --site lms.localhost migrate
+      fi
+      
+      bench set-config -g default_site lms.localhost
+      
+      echo '=== Iniciando Frappe LMS ==='
+      bench start
+      EOF
+      "
+    depends_on:
+      - mariadb
+      - redis
 
 volumes:
   mariadb-data:
+  lms-sites:

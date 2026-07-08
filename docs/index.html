@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frappe LMS - Presentacion</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Work+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f3efe7;
+        --bg-accent: #dfe8e0;
+        --ink: #1d1d1f;
+        --muted: #5b5b63;
+        --brand: #1f6e5a;
+        --brand-soft: #b7d7c7;
+        --card: #ffffff;
+        --line: #e6dfd2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Work Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: radial-gradient(circle at top left, #fdfbf6 0%, var(--bg) 45%, var(--bg-accent) 100%);
+        min-height: 100vh;
+      }
+
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+
+      .hero {
+        display: block;
+      }
+
+      .team-icon {
+        width: 88px;
+        height: 88px;
+        border-radius: 12px;
+        border: 2px dashed var(--brand);
+        background: rgba(31, 110, 90, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: var(--brand);
+        text-align: center;
+        padding: 8px;
+        overflow: hidden;
+      }
+
+      .team-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: "Fraunces", "Georgia", serif;
+        margin: 0 0 12px;
+      }
+
+      h1 {
+        font-size: clamp(2.2rem, 3vw, 3.4rem);
+        line-height: 1.1;
+      }
+
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .tagline {
+        display: inline-block;
+        background: var(--brand-soft);
+        color: var(--brand);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        margin-bottom: 14px;
+      }
+
+      .hero-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 18px 40px rgba(50, 60, 70, 0.08);
+      }
+
+      .team-card {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .team-card h2 {
+        margin-bottom: 6px;
+      }
+
+      .team-card p {
+        margin: 0;
+      }
+
+      .section {
+        margin-top: 40px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 18px;
+      }
+
+      .grid-tight {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        min-height: 140px;
+      }
+
+      .card.tight {
+        min-height: auto;
+      }
+
+      .card h3 {
+        font-size: 1.1rem;
+      }
+
+      .list {
+        padding-left: 18px;
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .list li {
+        margin-bottom: 8px;
+      }
+
+      .highlight {
+        background: linear-gradient(120deg, rgba(31, 110, 90, 0.12), rgba(31, 110, 90, 0.02));
+        border-left: 4px solid var(--brand);
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      .media-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+
+      .media-card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .media-card img {
+        display: block;
+        width: 100%;
+        height: 220px;
+        object-fit: cover;
+        cursor: zoom-in;
+      }
+
+      .media-card p {
+        padding: 12px 14px 16px;
+        margin: 0;
+      }
+
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        background: rgba(12, 12, 14, 0.75);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        padding: 24px;
+      }
+
+      .lightbox.is-open {
+        display: flex;
+      }
+
+      .lightbox-content {
+        width: min(1000px, 92vw);
+        max-height: 82vh;
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+
+      .lightbox-content img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .lightbox-caption {
+        padding: 14px 18px;
+        color: var(--muted);
+      }
+
+      .footer {
+        margin-top: 48px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 720px) {
+        .team-icon {
+          width: 72px;
+          height: 72px;
+        }
+
+        .team-card {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div class="hero-card">
+          <div class="tagline">Frappe LMS</div>
+          <h1>Una plataforma de aprendizaje para equipos, cursos y crecimiento continuo.</h1>
+          <p>
+            Frappe LMS es un producto de software de codigo abierto para crear, distribuir y
+            administrar experiencias de aprendizaje. Esta pagina resume el producto seleccionado
+            con enfasis en su estructura modular y las capacidades mas relevantes para una
+            institucion o empresa.
+          </p>
+          <div class="highlight">
+            <strong>Enfoque: </strong> plataforma simple y facil de usar para estructurar
+            contenidos, lanzar cursos y compartir conocimiento con claridad.
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="hero-card team-card">
+          <div class="team-icon">
+            <img src="img/teamGorgojo.jpeg" alt="Logo del equipo" />
+          </div>
+          <div>
+            <h2>Grupo 7 - Team Gorgojo</h2>
+            <p>Equipo responsable del analisis y pruebas del producto.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Descripcion del producto</h2>
+        <p>
+          Frappe LMS permite gestionar cursos y rutas de aprendizaje de forma organizada, con
+          herramientas para la creacion de contenidos, evaluaciones y seguimiento de progreso.
+          Su enfoque es ofrecer una experiencia clara tanto para administradores como para
+          estudiantes, con flujos de trabajo configurables y reportes integrados.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Modulos</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Aprendizaje estructurado</h3>
+            <p>
+              Organiza el contenido en una jerarquia clara de cursos, capitulos y lecciones para
+              mantener un hilo pedagogico consistente en todo el programa.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Clases en vivo y cohorts</h3>
+            <p>
+              Agrupa estudiantes en cohorts o batches y gestiona sesiones en vivo con integracion
+              a Zoom para experiencias sincronas.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Quizzes y asignaciones</h3>
+            <p>
+              Evaluaciones con preguntas de opcion multiple, respuesta abierta y tareas para
+              medir el avance y el dominio de contenidos.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Certificacion</h3>
+            <p>
+              Certificados con plantilla predeterminada o personalizable, incluyendo emision
+              automatica al completar un curso.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Importacion de cursos</h3>
+            <p>
+              Carga masiva por CSV, hojas de calculo o paquetes ZIP (no SCORM) para acelerar la
+              creacion de catalogos.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Monetizacion</h3>
+            <p>
+              Cursos de pago y certificaciones pagadas con soporte de moneda y precios mediante
+              la app de pagos.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Caracteristicas identificadas:</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Experiencia del estudiante</h3>
+            <ul class="list">
+              <li>Inscripcion en cursos publicados y destacados.</li>
+              <li>Acceso a lecciones, quizzes y asignaciones.</li>
+              <li>Seguimiento de progreso a traves de cohorts.</li>
+              <li>Certificados al completar cursos.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Administracion eficiente</h3>
+            <ul class="list">
+              <li>Control de publicaciones, destacados y cursos proximos.</li>
+              <li>Importacion masiva de cursos y metadata.</li>
+              <li>Configurar cursos de pago y certificaciones pagadas.</li>
+              <li>Notificaciones para cursos publicados y quizzes.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Integracion y escalabilidad</h3>
+            <ul class="list">
+              <li>Basado en Frappe Framework y Frappe UI.</li>
+              <li>Integracion de pagos via Frappe Payments.</li>
+              <li>Opciones de despliegue con Docker o Bench.</li>
+              <li>Analitica con indicadores de registros y finalizacion.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Gestion comercial</h3>
+            <ul class="list">
+              <li>Cursos gratuitos y de pago.</li>
+              <li>Certificaciones pagadas opcionales.</li>
+              <li>Configuracion de moneda y precios.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Flujo de trabajo del curso</h2>
+        <div class="grid-tight">
+          <div class="card tight">
+            <strong>1. Diseñar curso</strong>
+            <p>Definir titulo, introduccion, categoria y objetivos.</p>
+          </div>
+          <div class="card tight">
+            <strong>2. Estructurar contenido</strong>
+            <p>Organizar capitulos, lecciones y recursos.</p>
+          </div>
+          <div class="card tight">
+            <strong>3. Publicar</strong>
+            <p>Marcar como visible, destacar o programar.</p>
+          </div>
+          <div class="card tight">
+            <strong>4. Evaluar</strong>
+            <p>Aplicar quizzes y asignaciones con feedback.</p>
+          </div>
+          <div class="card tight">
+            <strong>5. Certificar</strong>
+            <p>Emitir certificado automatico o por evaluador.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Capturas de la plataforma</h2>
+        <div class="media-grid">
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-9.37.40-AM.png"
+              alt="Creacion de curso"
+              data-caption="Creacion de cursos desde el portal de aprendizaje."
+            />
+            <p>Creacion de cursos desde el portal de aprendizaje.</p>
+          </div>
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-10.11.38-AM.png"
+              alt="Modal de curso"
+              data-caption="Modal de creacion con datos basicos del curso."
+            />
+            <p>Modal de creacion con datos basicos del curso.</p>
+          </div>
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-9.47.25-AM.png"
+              alt="Plantillas de importacion"
+              data-caption="Descarga de plantillas para importacion masiva."
+            />
+            <p>Descarga de plantillas para importacion masiva.</p>
+          </div>
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-9.48.09-AM.png"
+              alt="Plantilla personalizada"
+              data-caption="Configuracion de plantilla personalizada para importar."
+            />
+            <p>Configuracion de plantilla personalizada para importar.</p>
+          </div>
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-9.46.07-AM.png"
+              alt="Importar desde hojas"
+              data-caption="Importacion desde hojas de calculo en linea."
+            />
+            <p>Importacion desde hojas de calculo en linea.</p>
+          </div>
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-9.53.01-AM.png"
+              alt="Mapeo de columnas"
+              data-caption="Mapeo de columnas antes de importar cursos."
+            />
+            <p>Mapeo de columnas antes de importar cursos.</p>
+          </div>
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-10.05.58-AM.png"
+              alt="Revision e importacion"
+              data-caption="Revision final y ejecucion de la importacion."
+            />
+            <p>Revision final y ejecucion de la importacion.</p>
+          </div>
+          <div class="media-card">
+            <img
+              src="img/Screenshot-2026-02-23-at-12.03.25-PM.png"
+              alt="Logs de importacion"
+              data-caption="Seguimiento de registros y errores de importacion."
+            />
+            <p>Seguimiento de registros y errores de importacion.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Galeria de roles y permisos</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>System Manager</h3>
+            <ul class="list">
+              <li>Rol con permisos completos sobre la aplicacion.</li>
+              <li>Gestiona configuraciones, cursos y usuarios.</li>
+              <li>Acceso total a reportes y datos.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Course Creator</h3>
+            <ul class="list">
+              <li>Crea y gestiona cursos y contenidos.</li>
+              <li>Administra capitulos, lecciones y evaluaciones.</li>
+              <li>Publica contenido dentro del portal.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>LMS Student</h3>
+            <ul class="list">
+              <li>Acceso de solo lectura al contenido asignado.</li>
+              <li>Participa en cursos y batches.</li>
+              <li>Completa quizzes y asignaciones.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Moderador</h3>
+            <ul class="list">
+              <li>Permisos de gestion sobre contenidos.</li>
+              <li>Controla visibilidad y publicacion.</li>
+              <li>Aplica criterios sobre cursos destacados.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Integraciones y despliegue</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Frappe Framework</h3>
+            <p>Base full-stack para extender funcionalidades y flujos.</p>
+          </div>
+          <div class="card">
+            <h3>Frappe UI</h3>
+            <p>Interfaz moderna basada en Vue para experiencias consistentes.</p>
+          </div>
+          <div class="card">
+            <h3>Hosting administrado</h3>
+            <p>Despliegue en Frappe Cloud con mantenimiento incluido.</p>
+          </div>
+          <div class="card">
+            <h3>Auto hospedado</h3>
+            <p>Opciones locales o en servidor propio con Docker o Bench.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Publico objetivo</h2>
+        <p>
+          Instituciones educativas, areas de talento humano y equipos que requieren
+          capacitacion continua con evidencia de aprendizaje.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Beneficios identificados:</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Visibilidad</h3>
+            <p>Centraliza la informacion para monitorear el avance y detectar brechas.</p>
+          </div>
+          <div class="card">
+            <h3>Agilidad</h3>
+            <p>Reduce tiempos de implementacion con flujos simples y configurables.</p>
+          </div>
+          <div class="card">
+            <h3>Calidad</h3>
+            <p>Mejora la consistencia de los contenidos con control y versionado.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <div class="lightbox" id="lightbox">
+      <div class="lightbox-content">
+        <img id="lightbox-image" src="" alt="" />
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+      </div>
+    </div>
+
+    <script>
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImage = document.getElementById("lightbox-image");
+      const lightboxCaption = document.getElementById("lightbox-caption");
+
+      document.querySelectorAll(".media-card img").forEach((img) => {
+        img.addEventListener("click", () => {
+          lightboxImage.src = img.src;
+          lightboxImage.alt = img.alt || "Imagen ampliada";
+          lightboxCaption.textContent = img.dataset.caption || "";
+          lightbox.classList.add("is-open");
+        });
+      });
+
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) {
+          lightbox.classList.remove("is-open");
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          lightbox.classList.remove("is-open");
+        }
+      });
+    </script>
+  </body>
+</html>
