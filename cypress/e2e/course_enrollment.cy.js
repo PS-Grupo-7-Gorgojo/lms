@@ -22,6 +22,7 @@ describe("Course Enrollment — SYS-02", () => {
 			short_introduction: "E2E test for student enrollment flow.",
 			description: "Cypress E2E course enrollment validation.",
 			published: 1,
+			instructors: [{ instructor: "frappe@example.com" }],
 		}).then((response) => {
 			if (response.body && response.body.data) {
 				courseSlug = response.body.data.name;

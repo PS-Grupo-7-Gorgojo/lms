@@ -3,7 +3,7 @@ describe("Certificate Generation — SYS-06", () => {
 	const studentPassword = Cypress.config("adminPassword") || "admin";
 	const generateId = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-	let courseName, lessonName;
+	let courseSlug, lessonSlug;
 	let csrfToken;
 
 	function frappeReq(method, url, body) {
@@ -19,50 +19,55 @@ describe("Certificate Generation — SYS-06", () => {
 		});
 
 		const certId = generateId();
-		courseName = `E2E Cert Course ${certId}`;
-		lessonName = `E2E Cert Lesson ${certId}`;
+		const courseTitle = `E2E Cert Course ${certId}`;
+		const lessonTitle = `E2E Cert Lesson ${certId}`;
 
 		frappeReq("POST", "/api/resource/LMS Course", {
-			title: courseName,
+			title: courseTitle,
 			short_introduction: "E2E certification test course.",
 			description: "Cypress E2E certificate generation validation.",
 			published: 1,
 			enable_certification: 1,
+			instructors: [{ instructor: "frappe@example.com" }],
+		}).then((r) => {
+			if (r.body && r.body.data) courseSlug = r.body.data.name;
 		});
 
 		frappeReq("POST", "/api/resource/Course Chapter", {
-			course: courseName,
+			course: courseSlug,
 			title: "E2E Cert Chapter",
 		});
 
 		frappeReq("POST", "/api/resource/Course Lesson", {
-			course: courseName,
+			course: courseSlug,
 			chapter: "E2E Cert Chapter",
-			title: lessonName,
+			title: lessonTitle,
 			content: JSON.stringify({
 				time: Date.now(),
 				blocks: [{ id: "abc123", type: "markdown", data: { text: "E2E certification lesson." } }],
 				version: "2.29.0",
 			}),
+		}).then((r) => {
+			if (r.body && r.body.data) lessonSlug = r.body.data.name;
 		});
 
 		frappeReq("POST", "/api/resource/LMS Enrollment", {
 			member: studentEmail,
-			course: courseName,
+			course: courseSlug,
 			progress: 100,
 		});
 
 		frappeReq("POST", "/api/resource/LMS Course Progress", {
 			member: studentEmail,
-			course: courseName,
-			lesson: lessonName,
+			course: courseSlug,
+			lesson: lessonSlug,
 			status: "Complete",
 		});
 	});
 
 	it("student with 100% progress can request a certificate", () => {
 		cy.login(studentEmail, studentPassword);
-		cy.visit(`/lms/courses/${courseName}/certification`);
+		cy.visit(`/lms/courses/${courseSlug}/certification`);
 		cy.closeOnboardingModal();
 
 		cy.contains(/certification|certificate/i, { timeout: 10000 }).should("be.visible");
@@ -76,7 +81,7 @@ describe("Certificate Generation — SYS-06", () => {
 
 	it("duplicate certificate generation is blocked", () => {
 		cy.login(studentEmail, studentPassword);
-		cy.visit(`/lms/courses/${courseName}/certification`);
+		cy.visit(`/lms/courses/${courseSlug}/certification`);
 		cy.closeOnboardingModal();
 
 		cy.get("body").then(($body) => {
@@ -100,9 +105,9 @@ describe("Certificate Generation — SYS-06", () => {
 	after(() => {
 		cy.login();
 		if (csrfToken) {
-			frappeReq("DELETE", `/api/resource/LMS Course/${encodeURIComponent(courseName)}`);
+			frappeReq("DELETE", `/api/resource/LMS Course/${encodeURIComponent(courseSlug)}`);
 			frappeReq("DELETE", "/api/resource/Course Chapter/E2E Cert Chapter");
-			frappeReq("DELETE", `/api/resource/Course Lesson/${encodeURIComponent(lessonName)}`);
+			frappeReq("DELETE", `/api/resource/Course Lesson/${encodeURIComponent(lessonSlug)}`);
 		}
 	});
 });

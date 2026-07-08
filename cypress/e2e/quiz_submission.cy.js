@@ -3,7 +3,7 @@ describe("Quiz Submission — SYS-03", () => {
 	const studentPassword = Cypress.config("adminPassword") || "admin";
 	const generateId = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-	let quizName, courseName;
+	let quizName, courseTitle, courseSlug;
 	let questionNames = [];
 	let csrfToken;
 
@@ -21,7 +21,7 @@ describe("Quiz Submission — SYS-03", () => {
 
 		const quizId = generateId();
 		quizName = `E2E Quiz ${quizId}`;
-		courseName = `e2e-quiz-course-${quizId}`;
+		courseTitle = `e2e-quiz-course-${quizId}`;
 
 		frappeReq("POST", "/api/resource/LMS Question", {
 			question: "E2E Q1: What is 2 + 2?",
@@ -79,19 +79,22 @@ describe("Quiz Submission — SYS-03", () => {
 		});
 
 		frappeReq("POST", "/api/resource/LMS Course", {
-			title: courseName,
+			title: courseTitle,
 			short_introduction: "E2E quiz test course.",
 			description: "Cypress E2E quiz submission validation.",
 			published: 1,
+			instructors: [{ instructor: "frappe@example.com" }],
+		}).then((r) => {
+			if (r.body && r.body.data) courseSlug = r.body.data.name;
 		});
 
 		frappeReq("POST", "/api/resource/Course Chapter", {
-			course: courseName,
+			course: courseSlug,
 			title: "E2E Quiz Chapter",
 		});
 
 		frappeReq("POST", "/api/resource/Course Lesson", {
-			course: courseName,
+			course: courseSlug,
 			chapter: "E2E Quiz Chapter",
 			title: "E2E Quiz Lesson",
 			content: JSON.stringify({
@@ -103,7 +106,7 @@ describe("Quiz Submission — SYS-03", () => {
 
 		frappeReq("POST", "/api/resource/LMS Enrollment", {
 			member: studentEmail,
-			course: courseName,
+			course: courseSlug,
 		});
 	});
 
@@ -137,7 +140,7 @@ describe("Quiz Submission — SYS-03", () => {
 		cy.login();
 		if (csrfToken) {
 			frappeReq("DELETE", `/api/resource/LMS Quiz/${encodeURIComponent(quizName)}`);
-			frappeReq("DELETE", `/api/resource/LMS Course/${encodeURIComponent(courseName)}`);
+			frappeReq("DELETE", `/api/resource/LMS Course/${encodeURIComponent(courseSlug)}`);
 			frappeReq("DELETE", "/api/resource/Course Chapter/E2E Quiz Chapter");
 			frappeReq("DELETE", "/api/resource/Course Lesson/E2E Quiz Lesson");
 			questionNames.forEach((q) => frappeReq("DELETE", `/api/resource/LMS Question/${q}`));
