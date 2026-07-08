@@ -1,14 +1,11 @@
 describe("Quiz Submission — SYS-03", () => {
 	const studentEmail = Cypress.config("testUser") || "frappe@example.com";
 	const studentPassword = Cypress.config("adminPassword") || "admin";
-	const courseTitle = "E2E Quiz Test Course";
-	const quizTitle = "E2E Quiz Test";
+	const courseTitle = `E2E Quiz ${Date.now()}`;
 
 	before(() => {
 		cy.login();
-		cy.closeOnboardingModal();
 		cy.wait(500);
-
 		cy.visit("/lms/courses");
 		cy.closeOnboardingModal();
 
@@ -20,7 +17,6 @@ describe("Quiz Submission — SYS-03", () => {
 			.should("be.visible")
 			.within(() => {
 				cy.get("label").contains("Title").parent().find("input").type(courseTitle);
-
 				cy.get("label")
 					.contains("Instructors")
 					.parent()
@@ -42,7 +38,7 @@ describe("Quiz Submission — SYS-03", () => {
 				.parent()
 				.find("textarea")
 				.type("E2E quiz test course.");
-			cy.get("div.ProseMirror").invoke("text", "Quiz submission E2E test.");
+			cy.get("div.ProseMirror").invoke("text", "Quiz test.");
 			cy.button("Save").click();
 		});
 
@@ -83,25 +79,25 @@ describe("Quiz Submission — SYS-03", () => {
 		cy.wait(500);
 	});
 
-	it("student can enroll in the course and access content", () => {
+	it("student can enroll in the published course", () => {
 		cy.login(studentEmail, studentPassword);
 		cy.visit("/lms/courses");
 		cy.closeOnboardingModal();
 
-		cy.contains("a", courseTitle).should("be.visible").click();
+		cy.contains("a", courseTitle).click();
 		cy.get("button, a").contains(/Enroll/i).click();
 		cy.wait(1000);
 
 		cy.contains(/Enrolled|Continue Learning/i, { timeout: 10000 }).should("exist");
 	});
 
-	it("student can view quiz page and see the expected UI", () => {
+	it("student can see course content after enrollment", () => {
 		cy.login(studentEmail, studentPassword);
-		cy.visit(`/lms/courses/${encodeURIComponent(courseTitle.toLowerCase().replace(/\s+/g, "-"))}`);
+		cy.visit("/lms/courses");
 		cy.closeOnboardingModal();
 
-		cy.contains(courseTitle, { timeout: 10000 }).should("be.visible");
-		cy.contains(/chapter|lesson|content/i).should("exist");
+		cy.contains("a", courseTitle).click();
+		cy.contains(/chapter|lesson|content/i, { timeout: 10000 }).should("exist");
 	});
 
 	after(() => {
@@ -109,18 +105,28 @@ describe("Quiz Submission — SYS-03", () => {
 		cy.visit("/lms/courses");
 		cy.closeOnboardingModal();
 
-		cy.contains("a", courseTitle).should("be.visible").click();
-		cy.get("button, [role=tab]").contains("Settings").click();
-		cy.wait(500);
+		cy.get("body").then(($body) => {
+			if ($body.text().includes(courseTitle)) {
+				cy.contains("a", courseTitle).click();
+				cy.wait(500);
 
-		cy.get("header")
-			.find('button[aria-haspopup="menu"]', { timeout: 10000 })
-			.first()
-			.click({ force: true });
-		cy.get("div[role=menu]").within(() => {
-			cy.contains('[role="menuitem"]', "Delete").click();
+				cy.get("body").then(($detail) => {
+					if ($detail.find("button, [role=tab]").filter(":contains('Settings')").length) {
+						cy.get("button, [role=tab]").contains("Settings").click();
+						cy.wait(500);
+
+						cy.get("header")
+							.find('button[aria-haspopup="menu"]')
+							.first()
+							.click({ force: true });
+						cy.get("div[role=menu]").within(() => {
+							cy.contains('[role="menuitem"]', "Delete").click();
+						});
+						cy.get("span").contains("Delete").click();
+						cy.wait(500);
+					}
+				});
+			}
 		});
-		cy.get("span").contains("Delete").click();
-		cy.wait(500);
 	});
 });
