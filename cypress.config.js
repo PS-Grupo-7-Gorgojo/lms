@@ -4,7 +4,7 @@ import cypressSplit from "cypress-split";
 export default defineConfig({
 	projectId: "vandxn",
 	adminPassword: "admin",
-	testUser: "frappe@example.com",
+	testUser: "Administrator",
 	defaultCommandTimeout: 20000,
 	pageLoadTimeout: 15000,
 	video: true,
@@ -14,7 +14,7 @@ export default defineConfig({
 		openMode: 0,
 	},
 	e2e: {
-		baseUrl: "http://pertest:8000",
+		baseUrl: "https://gorgojo-lms.duckdns.org/",
 		setupNodeEvents(on, config) {
 			// Splitting tests only works when Cypress Cloud is not orchestrating parallel runs.
 			if (process.env.CYPRESS_CLOUD_PARALLEL !== "1") {
