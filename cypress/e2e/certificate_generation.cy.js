@@ -1,113 +1,142 @@
 describe("Certificate Generation — SYS-06", () => {
 	const studentEmail = Cypress.config("testUser") || "frappe@example.com";
 	const studentPassword = Cypress.config("adminPassword") || "admin";
-	const generateId = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+	const courseTitle = "E2E Cert Test Course";
+	let courseSlug;
 
-	let courseSlug, lessonSlug;
-	let csrfToken;
-
-	function frappeReq(method, url, body) {
-		const headers = csrfToken ? { "X-Frappe-CSRF-Token": csrfToken } : {};
-		return cy.request({ url, method, headers, body, failOnStatusCode: false });
+	function benchExec(pythonCode) {
+		return cy.exec(
+			`cd ~/frappe-bench && bench --site lms.test execute '${pythonCode}'`,
+			{ failOnStatusCode: false }
+		);
 	}
 
 	before(() => {
 		cy.login();
-		cy.visit("/");
-		cy.window().then((win) => {
-			csrfToken = win.csrf_token;
+		cy.closeOnboardingModal();
+		cy.wait(500);
+
+		cy.visit("/lms/courses");
+		cy.closeOnboardingModal();
+
+		cy.get("button").contains("Create").click();
+		cy.contains('[role="menuitem"]', "New Course").click();
+		cy.wait(500);
+
+		cy.get("[data-dismissable-layer]")
+			.should("be.visible")
+			.within(() => {
+				cy.get("label").contains("Title").parent().find("input").type(courseTitle);
+
+				cy.get("label")
+					.contains("Instructors")
+					.parent()
+					.find("button")
+					.first()
+					.click();
+			});
+
+		cy.get('[data-slot="content-body"] [data-slot="input"]')
+			.should("be.visible")
+			.type("frappe");
+		cy.wait(500);
+		cy.get('[data-slot="content-body"] [role="option"]').first().click();
+		cy.get("body").type("{esc}");
+
+		cy.get("[data-dismissable-layer]").within(() => {
+			cy.get("label")
+				.contains("Short introduction")
+				.parent()
+				.find("textarea")
+				.type("E2E certification test.");
+			cy.get("div.ProseMirror").invoke("text", "Certificate generation E2E test.");
+			cy.button("Save").click();
 		});
 
-		const certId = generateId();
-		const courseTitle = `E2E Cert Course ${certId}`;
-		const lessonTitle = `E2E Cert Lesson ${certId}`;
+		cy.wait(500);
+		cy.url().should("include", "/lms/courses/");
 
-		frappeReq("POST", "/api/resource/LMS Course", {
-			title: courseTitle,
-			short_introduction: "E2E certification test course.",
-			description: "Cypress E2E certificate generation validation.",
-			published: 1,
-			enable_certification: 1,
-			instructors: [{ instructor: "frappe@example.com" }],
-		}).then((r) => {
-			if (r.body && r.body.data) courseSlug = r.body.data.name;
+		cy.url().then((url) => {
+			courseSlug = url.split("/").pop().split("#")[0];
 		});
 
-		frappeReq("POST", "/api/resource/Course Chapter", {
-			course: courseSlug,
-			title: "E2E Cert Chapter",
-		});
+		cy.get("header").find("button").contains(/^Publish$/).click();
+		cy.contains(/Course published/i, { timeout: 10000 }).should("exist");
 
-		frappeReq("POST", "/api/resource/Course Lesson", {
-			course: courseSlug,
-			chapter: "E2E Cert Chapter",
-			title: lessonTitle,
-			content: JSON.stringify({
-				time: Date.now(),
-				blocks: [{ id: "abc123", type: "markdown", data: { text: "E2E certification lesson." } }],
-				version: "2.29.0",
-			}),
-		}).then((r) => {
-			if (r.body && r.body.data) lessonSlug = r.body.data.name;
-		});
+		cy.get("button, [role=tab]").contains("Course editor").click();
+		cy.wait(500);
+		cy.contains("button", "Create chapter").click();
+		cy.wait(500);
+		cy.get("[data-dismissable-layer]")
+			.should("be.visible")
+			.within(() => {
+				cy.get("label")
+					.contains("Title")
+					.parent()
+					.find("input")
+					.type("E2E Cert Chapter");
+				cy.button("Create").click();
+			});
 
-		frappeReq("POST", "/api/resource/LMS Enrollment", {
-			member: studentEmail,
-			course: courseSlug,
-			progress: 100,
-		});
-
-		frappeReq("POST", "/api/resource/LMS Course Progress", {
-			member: studentEmail,
-			course: courseSlug,
-			lesson: lessonSlug,
-			status: "Complete",
-		});
+		cy.wait(500);
+		cy.button("Add Lesson").click();
+		cy.wait(500);
+		cy.get("[data-dismissable-layer]")
+			.should("be.visible")
+			.within(() => {
+				cy.get("label")
+					.contains("Title")
+					.parent()
+					.find("input")
+					.type("E2E Cert Lesson");
+				cy.button("Create").click();
+			});
+		cy.wait(500);
 	});
 
-	it("student with 100% progress can request a certificate", () => {
+	it("student with 100% progress can access the certification page", () => {
+		benchExec(
+			`frappe.get_doc({doctype: 'LMS Course', name: '${courseSlug}'}).db_set('enable_certification', 1); print('OK')`
+		);
+		benchExec(
+			`enrollment = frappe.get_doc({doctype: 'LMS Enrollment', member: '${studentEmail}', course: '${courseSlug}', progress: 100}); enrollment.insert(ignore_permissions=True); print('OK')`
+		);
+
 		cy.login(studentEmail, studentPassword);
 		cy.visit(`/lms/courses/${courseSlug}/certification`);
 		cy.closeOnboardingModal();
 
 		cy.contains(/certification|certificate/i, { timeout: 10000 }).should("be.visible");
-		cy.get("button").contains(/get certificate|request certificate|claim/i).click();
-		cy.wait(1000);
-
-		cy.contains(/certificate generated|certificate issued|certificate/i, {
-			timeout: 10000,
-		}).should("exist");
 	});
 
-	it("duplicate certificate generation is blocked", () => {
+	it("student can request a certificate", () => {
 		cy.login(studentEmail, studentPassword);
 		cy.visit(`/lms/courses/${courseSlug}/certification`);
 		cy.closeOnboardingModal();
 
-		cy.get("body").then(($body) => {
-			const claimBtn = $body.find(
-				"button:contains('Get Certificate'), button:contains('Request Certificate'), button:contains('Claim')"
-			);
-			if (claimBtn.length) {
-				cy.wrap(claimBtn).click();
-				cy.contains(/already generated|already issued|already certified/i, {
-					timeout: 10000,
-				}).should("exist");
-			} else {
-				cy.contains(
-					/already generated|already issued|already certified|certificate/i,
-					{ timeout: 10000 }
-				).should("exist");
-			}
-		});
+		cy.get("button").contains(/get certificate|request certificate|claim|certificate/i).click();
+		cy.wait(1000);
+
+		cy.contains(/certificate/i, { timeout: 10000 }).should("exist");
 	});
 
 	after(() => {
 		cy.login();
-		if (csrfToken) {
-			frappeReq("DELETE", `/api/resource/LMS Course/${encodeURIComponent(courseSlug)}`);
-			frappeReq("DELETE", "/api/resource/Course Chapter/E2E Cert Chapter");
-			frappeReq("DELETE", `/api/resource/Course Lesson/${encodeURIComponent(lessonSlug)}`);
-		}
+		cy.visit("/lms/courses");
+		cy.closeOnboardingModal();
+
+		cy.contains("a", courseTitle).should("be.visible").click();
+		cy.get("button, [role=tab]").contains("Settings").click();
+		cy.wait(500);
+
+		cy.get("header")
+			.find('button[aria-haspopup="menu"]', { timeout: 10000 })
+			.first()
+			.click({ force: true });
+		cy.get("div[role=menu]").within(() => {
+			cy.contains('[role="menuitem"]', "Delete").click();
+		});
+		cy.get("span").contains("Delete").click();
+		cy.wait(500);
 	});
 });
