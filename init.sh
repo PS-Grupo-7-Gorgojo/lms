@@ -53,14 +53,10 @@ else
     echo "===================================================="
     echo " Vinculando tu Fork de Backend local..."
     echo "===================================================="
-<<<<<<< HEAD
     # bench get-app lms /workspace
-		bench get-app https://github.com/PS-Grupo-7-Gorgojo/lms --branch main
-		# mkdir -p "$BENCH_DIR/apps/lms"
-		# cp -r /workspace/. "$BENCH_DIR/apps/lms/"
-=======
-    bench get-app lms /workspace
->>>>>>> 58031fb8b80774f94dd184e6b88c0662983bedd1
+	bench get-app https://github.com/PS-Grupo-7-Gorgojo/lms --branch main
+	# mkdir -p "$BENCH_DIR/apps/lms"
+	# cp -r /workspace/. "$BENCH_DIR/apps/lms/"
 
     echo "===================================================="
     echo " Creando sitio local lms.localhost..."

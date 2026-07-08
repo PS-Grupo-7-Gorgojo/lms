@@ -4,9 +4,24 @@ Casos: INT-013 (Badge de Primera Matrícula)
        INT-014 (Badge al obtener Certificación)
 """
 
+import json
+
 import frappe
 from frappe.tests import IntegrationTestCase
 from lms.lms.api import upsert_chapter, add_lesson, mark_lesson_progress
+
+
+def _create_choice_question(text, options, correct_option):
+    """Crea una LMS Question de tipo 'Choices' con la opción correcta marcada."""
+    question = frappe.new_doc("LMS Question")
+    question.question = text
+    question.type = "Choices"
+    for i, option_text in enumerate(options, start=1):
+        setattr(question, f"option_{i}", option_text)
+        if i == correct_option:
+            setattr(question, f"is_correct_{i}", 1)
+    question.save(ignore_permissions=True)
+    return question.name
 
 
 class TestBadgeEnrollment(IntegrationTestCase):
@@ -26,13 +41,11 @@ class TestBadgeEnrollment(IntegrationTestCase):
             course = frappe.get_doc({
                 "doctype": "LMS Course",
                 "title": "Curso para Badge",
-                "course_name": cls.course_name,
+                "name": cls.course_name,
                 "published": 1,
-                # ⚠️ AÑADIR CAMPOS OBLIGATORIOS
                 "short_introduction": "Curso de prueba para badges",
                 "description": "Este curso se utiliza para probar la asignación de badges"
             })
-            # ⚠️ Agregar instructor (Administrator)
             course.append("instructors", {
                 "instructor": "Administrator"
             })
@@ -48,14 +61,13 @@ class TestBadgeEnrollment(IntegrationTestCase):
             course = frappe.get_doc({
                 "doctype": "LMS Course",
                 "title": "Curso para Badge de Certificado",
-                "course_name": cls.cert_course_name,
+                "name": cls.cert_course_name,
                 "published": 1,
                 "paid_certificate": 0,
-                # ⚠️ AÑADIR CAMPOS OBLIGATORIOS
+                "enable_certification": 1,
                 "short_introduction": "Curso de prueba para badge de certificado",
                 "description": "Este curso se utiliza para probar la asignación de badge al obtener certificado"
             })
-            # ⚠️ Agregar instructor (Administrator)
             course.append("instructors", {
                 "instructor": "Administrator"
             })
@@ -67,6 +79,10 @@ class TestBadgeEnrollment(IntegrationTestCase):
 
         # --- 3. Crear capítulos y lecciones para el curso de certificado ---
         cls.cert_lessons = []
+        # Posición (número de capítulo, número de lección) de cada lección en
+        # cert_lessons, en el mismo orden, para poder llamar a
+        # mark_lesson_progress con los índices correctos.
+        cls.cert_lesson_positions = []
 
         # Capítulo 1
         chapter1 = upsert_chapter(
@@ -84,6 +100,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
             idx=1
         )
         cls.cert_lessons.append(lesson1.name)
+        cls.cert_lesson_positions.append((1, 1))
 
         # Lección 1.2 (con quiz)
         cls.cert_quiz_lesson = add_lesson(
@@ -93,6 +110,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
             idx=2
         )
         cls.cert_lessons.append(cls.cert_quiz_lesson.name)
+        cls.cert_lesson_positions.append((1, 2))
 
         # Capítulo 2
         chapter2 = upsert_chapter(
@@ -110,12 +128,24 @@ class TestBadgeEnrollment(IntegrationTestCase):
             idx=1
         )
         cls.cert_lessons.append(cls.cert_assignment_lesson.name)
+        cls.cert_lesson_positions.append((2, 1))
 
         print(f"✅ {len(cls.cert_lessons)} lecciones creadas para curso de certificado")
 
-        # --- 4. Crear quiz en la lección ---
+        # --- 4. Crear preguntas y quiz en la lección ---
         cls.cert_quiz_name = "test-quiz-cert-badge"
         if not frappe.db.exists("LMS Quiz", cls.cert_quiz_name):
+            q1_name = _create_choice_question(
+                "¿Qué se obtiene al completar el curso?",
+                ["Un badge", "Un certificado", "Ambos"],
+                correct_option=3,
+            )
+            q2_name = _create_choice_question(
+                "¿Qué porcentaje se necesita para aprobar?",
+                ["50%", "70%", "100%"],
+                correct_option=2,
+            )
+
             quiz = frappe.get_doc({
                 "doctype": "LMS Quiz",
                 "title": "Quiz para Badge de Certificado",
@@ -124,38 +154,9 @@ class TestBadgeEnrollment(IntegrationTestCase):
                 "course": cls.cert_course_name,
                 "lesson": cls.cert_quiz_lesson.name
             })
+            quiz.append("questions", {"question": q1_name, "marks": 1})
+            quiz.append("questions", {"question": q2_name, "marks": 1})
             quiz.insert()
-
-            questions = [
-                {
-                    "question": "¿Qué se obtiene al completar el curso?",
-                    "type": "Multiple Choice",
-                    "option_1": "Un badge",
-                    "option_2": "Un certificado",
-                    "option_3": "Ambos",
-                    "correct": 3
-                },
-                {
-                    "question": "¿Qué porcentaje se necesita para aprobar?",
-                    "type": "Multiple Choice",
-                    "option_1": "50%",
-                    "option_2": "70%",
-                    "option_3": "100%",
-                    "correct": 2
-                }
-            ]
-
-            for q in questions:
-                quiz.append("questions", {
-                    "question": q["question"],
-                    "type": q["type"],
-                    "option_1": q["option_1"],
-                    "option_2": q["option_2"],
-                    "option_3": q["option_3"],
-                    "correct": q["correct"]
-                })
-
-            quiz.save()
             frappe.db.commit()
             print(f"✅ Quiz '{cls.cert_quiz_name}' creado")
         else:
@@ -187,7 +188,9 @@ class TestBadgeEnrollment(IntegrationTestCase):
                 "name": cls.badge_name,
                 "description": "Otorgado por la primera matrícula en un curso",
                 "event": "New",
-                "document_type": "LMS Enrollment",
+                "reference_doctype": "LMS Enrollment",
+                "user_field": "member",
+                "condition": "True",
                 "grant_only_once": 1
             })
             badge.insert()
@@ -205,7 +208,9 @@ class TestBadgeEnrollment(IntegrationTestCase):
                 "name": cls.cert_badge_name,
                 "description": "Otorgado al obtener una certificación",
                 "event": "New",
-                "document_type": "LMS Certificate",
+                "reference_doctype": "LMS Certificate",
+                "user_field": "member",
+                "condition": "True",
                 "grant_only_once": 1
             })
             badge.insert()
@@ -245,6 +250,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
 
     def tearDown(self):
         """Limpieza después de cada prueba"""
+        frappe.set_user("Administrator")
         super().tearDown()
 
     # ======================================================================
@@ -277,7 +283,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
         badge = frappe.get_doc("LMS Badge", self.badge_name)
         print(f"  ✅ Badge encontrado: {badge.title}")
         print(f"     Evento: {badge.event}")
-        print(f"     Documento: {badge.document_type}")
+        print(f"     Documento: {badge.reference_doctype}")
         print(f"     Grant only once: {badge.grant_only_once}")
 
         # --- 3. Crear matrícula (debe disparar la asignación del badge) ---
@@ -299,7 +305,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
                 "member": self.student_email,
                 "badge": self.badge_name
             },
-            ["name", "badge", "badge_title", "issued_on", "granted_by"]
+            ["name", "badge", "badge_description", "issued_on"]
         )
 
         self.assertEqual(len(badge_assignments), 1,
@@ -308,9 +314,8 @@ class TestBadgeEnrollment(IntegrationTestCase):
         assignment = badge_assignments[0]
         print(f"  ✅ Badge asignado automáticamente")
         print(f"     ID: {assignment.name}")
-        print(f"     Badge: {assignment.badge_title}")
+        print(f"     Badge: {assignment.badge}")
         print(f"     Fecha: {assignment.issued_on}")
-        print(f"     Otorgado por: {assignment.granted_by}")
 
         # --- 5. Verificar que el badge está correctamente asignado al estudiante ---
         print("\n📖 Paso 5: Verificar que el badge está vinculado al estudiante correcto")
@@ -321,11 +326,12 @@ class TestBadgeEnrollment(IntegrationTestCase):
             "El badge asignado no coincide con el badge esperado")
 
         # Verificar que el badge tiene la información correcta
-        self.assertEqual(assignment_doc.badge_title, "Primera Matrícula",
+        badge_title = frappe.db.get_value("LMS Badge", assignment_doc.badge, "title")
+        self.assertEqual(badge_title, "Primera Matrícula",
             "El título del badge asignado no es el correcto")
 
         print(f"  ✅ Badge vinculado al estudiante correcto: {assignment_doc.member}")
-        print(f"  ✅ Badge asignado: {assignment_doc.badge_title}")
+        print(f"  ✅ Badge asignado: {badge_title}")
 
         # --- 6. Verificar que no se asigna el badge nuevamente (idempotencia) ---
         print("\n📖 Paso 6: Verificar que no se asigna el badge nuevamente (idempotencia)")
@@ -336,7 +342,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
             course2 = frappe.get_doc({
                 "doctype": "LMS Course",
                 "title": "Curso para Badge 2",
-                "course_name": course2_name,
+                "name": course2_name,
                 "published": 1
             })
             course2.insert()
@@ -430,7 +436,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
         badge = frappe.get_doc("LMS Badge", self.cert_badge_name)
         print(f"  ✅ Badge encontrado: {badge.title}")
         print(f"     Evento: {badge.event}")
-        print(f"     Documento: {badge.document_type}")
+        print(f"     Documento: {badge.reference_doctype}")
         print(f"     Grant only once: {badge.grant_only_once}")
 
         # --- 3. Matricular al estudiante en el curso ---
@@ -444,11 +450,16 @@ class TestBadgeEnrollment(IntegrationTestCase):
         frappe.db.commit()
         print(f"  ✅ Matrícula creada: {enrollment.name}")
 
+        # A partir de aquí, el progreso, el quiz, el assignment y el
+        # certificado se calculan sobre frappe.session.user, así que hay
+        # que operar como el propio estudiante matriculado.
+        frappe.set_user(self.student_email)
+
         # --- 4. Completar TODAS las lecciones ---
         print("\n📖 Paso 4: Completar todas las lecciones del curso")
-        for i in range(1, len(self.cert_lessons) + 1):
-            mark_lesson_progress(self.cert_course_name, 1, i)
-            print(f"  ✅ Lección {i} completada")
+        for chapter_number, lesson_number in self.cert_lesson_positions:
+            mark_lesson_progress(self.cert_course_name, chapter_number, lesson_number)
+            print(f"  ✅ Lección (capítulo {chapter_number}, lección {lesson_number}) completada")
 
         # --- 5. Enviar y aprobar el quiz ---
         print("\n📖 Paso 5: Enviar y aprobar el quiz")
@@ -457,18 +468,24 @@ class TestBadgeEnrollment(IntegrationTestCase):
         quiz = frappe.get_doc("LMS Quiz", self.cert_quiz_name)
         results = []
         for q in quiz.questions:
+            question_doc = frappe.get_doc("LMS Question", q.question)
+            correct_option = next(
+                question_doc.get(f"option_{i}")
+                for i in range(1, 5)
+                if question_doc.get(f"is_correct_{i}")
+            )
             results.append({
                 "question_name": q.question,
-                "answer": [q.option_1]
+                "answer": [correct_option]
             })
 
         submission = submit_quiz(
             quiz=self.cert_quiz_name,
-            results=results
+            results=json.dumps(results)
         )
         frappe.db.commit()
         print(f"  ✅ Quiz enviado y aprobado")
-        print(f"     Porcentaje: {submission.percentage}%")
+        print(f"     Porcentaje: {submission['percentage']}%")
 
         # --- 6. Enviar y aprobar el assignment ---
         print("\n📖 Paso 6: Enviar y aprobar el assignment")
@@ -504,10 +521,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
         print("\n📖 Paso 9: Emitir el certificado (disparador del badge)")
         from lms.lms.doctype.lms_certificate.lms_certificate import create_certificate
 
-        certificate = create_certificate(
-            course=self.cert_course_name,
-            member=self.student_email
-        )
+        certificate = create_certificate(course=self.cert_course_name)
         frappe.db.commit()
         print(f"  ✅ Certificado emitido: {certificate.name}")
 
@@ -519,7 +533,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
                 "member": self.student_email,
                 "badge": self.cert_badge_name
             },
-            ["name", "badge", "badge_title", "issued_on", "granted_by"]
+            ["name", "badge", "badge_description", "issued_on"]
         )
 
         self.assertEqual(len(badge_assignments), 1,
@@ -528,7 +542,7 @@ class TestBadgeEnrollment(IntegrationTestCase):
         assignment = badge_assignments[0]
         print(f"  ✅ Badge asignado automáticamente")
         print(f"     ID: {assignment.name}")
-        print(f"     Badge: {assignment.badge_title}")
+        print(f"     Badge: {assignment.badge}")
         print(f"     Fecha: {assignment.issued_on}")
 
         # --- 11. Verificar que el badge está vinculado al estudiante correcto ---
@@ -539,16 +553,13 @@ class TestBadgeEnrollment(IntegrationTestCase):
         self.assertEqual(assignment_doc.badge, self.cert_badge_name,
             "El badge asignado no coincide con el badge esperado")
         print(f"  ✅ Badge vinculado al estudiante correcto: {assignment_doc.member}")
-        print(f"  ✅ Badge asignado: {assignment_doc.badge_title}")
+        print(f"  ✅ Badge asignado: {assignment_doc.badge}")
 
         # --- 12. Verificar idempotencia (no se asigna badge nuevamente) ---
         print("\n📖 Paso 12: Verificar idempotencia (no se asigna badge nuevamente)")
 
         # Intentar emitir otro certificado para el mismo curso (no debería duplicar badge)
-        certificate2 = create_certificate(
-            course=self.cert_course_name,
-            member=self.student_email
-        )
+        certificate2 = create_certificate(course=self.cert_course_name)
         frappe.db.commit()
         print(f"  ✅ Segundo certificado emitido: {certificate2.name}")
 
@@ -599,11 +610,47 @@ class TestBadgeEnrollment(IntegrationTestCase):
         print("\n📖 Paso 2: Intentar emitir certificado (curso incompleto)")
         from lms.lms.doctype.lms_certificate.lms_certificate import create_certificate
 
-        with self.assertRaises(Exception) as context:
-            create_certificate(
-                course=self.cert_course_name,
-                member=self.student_email
-            )
+        frappe.set_user(self.student_email)
+        with self.assertRaises(Exception):
+            create_certificate(course=self.cert_course_name)
 
         print("  ✅ Error capturado correctamente (curso incompleto)")
+        print("="*70)
+
+    def test_badge_grant_only_once(self):
+        """
+        INT-013-NEG: Verificar que un badge con 'grant_only_once=1' no se duplica
+        """
+        print("\n" + "="*70)
+        print(" INT-013-NEG: Verificar grant_only_once")
+        print("="*70)
+
+        # Obtener el badge y verificar su configuración
+        badge = frappe.get_doc("LMS Badge", self.badge_name)
+        self.assertEqual(badge.grant_only_once, 1,
+            "El badge no tiene configurado 'grant_only_once'")
+        print(f"   Badge tiene grant_only_once={badge.grant_only_once}")
+
+        # Verificar que el badge no se puede asignar manualmente si ya existe
+        # Primero, matricular al estudiante
+        enrollment = frappe.client.insert({
+            "doctype": "LMS Enrollment",
+            "member": self.student_email,
+            "course": self.course_name,
+            "status": "Active"
+        })
+        frappe.db.commit()
+        print(f"   Matrícula creada: {enrollment.name}")
+
+        # Verificar que el badge está asignado
+        assignments = frappe.get_all(
+            "LMS Badge Assignment",
+            {
+                "member": self.student_email,
+                "badge": self.badge_name
+            }
+        )
+        self.assertEqual(len(assignments), 1, "El badge debería estar asignado")
+        print("   Badge asignado automáticamente")
+
         print("="*70)
