@@ -33,7 +33,7 @@ class TestImportExportIntegration(BaseTestUtils):
 		)
 		
 		# Crear curso
-		self.course = self._create_course(title=f"Utility Course {self.test_id}")
+		self.course = self._create_course(title=f"Utility Course {self.test_id}", instructor=self.admin.email)
 		
 		# Crear evaluaciones
 		self.questions = self._create_quiz_questions()
