@@ -8,7 +8,7 @@ export default defineConfig({
 	defaultCommandTimeout: 20000,
 	pageLoadTimeout: 15000,
 	video: true,
-	videoUploadOnPasses: false,
+	videoUploadOnPasses: true,
 	retries: {
 		runMode: 2,
 		openMode: 0,
