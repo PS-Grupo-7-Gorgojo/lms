@@ -18,9 +18,15 @@ class TestBadgeEnrollment(IntegrationTestCase):
         super().setUp()
         frappe.set_user("Administrator")
 
-        # Limpiar badges antiguos de pruebas anteriores
+	    # Limpiar caché de badges para evitar referencias obsoletas
+        frappe.cache_manager.clear_doctype_map("LMS Badge")
+        frappe.cache().delete_key("doctype_map_LMS Badge")
+
+	    # Limpiar badges antiguos
         frappe.db.delete("LMS Badge", {"title": ["like", "Primera Matrícula%"]})
+        frappe.db.delete("LMS Badge", {"title": ["like", "Certificado Experto%"]})
         frappe.db.delete("LMS Badge Assignment", {"badge": ["like", "Primera Matrícula%"]})
+        frappe.db.delete("LMS Badge Assignment", {"badge": ["like", "Certificado Experto%"]})
         frappe.db.commit()
 
         # --- 1. Crear curso ---
@@ -233,6 +239,329 @@ class TestBadgeEnrollment(IntegrationTestCase):
         print("\n" + "="*70)
         print("(n.n) INT-013: Prueba completada exitosamente")
         print("="*70)
+
+	# ======================================================================
+	# INT-014: Badge al obtener Certificación
+	# ======================================================================
+
+    def test_int_014_certificate_badge(self):
+	    """INT-014: Badge al obtener Certificación"""
+	    print("\n" + "="*70)
+	    print(">  INT-014: Badge al obtener Certificación")
+	    print("="*70)
+
+	    # --- 1. Crear Badge "Certificado Experto" ---
+	    badge_title = f"Certificado Experto {frappe.generate_hash(length=6)}"
+	    badge = frappe.get_doc({
+	        "doctype": "LMS Badge",
+	        "title": badge_title,
+	        "description": "Otorgado al obtener una certificación",
+	        "image": "/assets/lms/images/badge-default.png",
+	        "event": "New",
+	        "reference_doctype": "LMS Certificate",
+	        "user_field": "member",
+	        "condition": "doc.member != ''",
+	        "grant_only_once": 1,
+	        "enabled": 1
+	    })
+	    badge.insert()
+	    self.cert_badge_name = badge.name
+	    frappe.db.commit()
+	    print(f"Badge '{self.cert_badge_name}' creado")
+
+	    # --- 2. Crear curso con certificación ---
+	    course_title = f"Curso Certificado Badge {frappe.generate_hash(length=6)}"
+	    course = frappe.get_doc({
+	        "doctype": "LMS Course",
+	        "title": course_title,
+	        "published": 1,
+	        "enable_certification": 1,
+	        "short_introduction": "Curso para badge de certificado",
+	        "description": "Este curso se utiliza para probar la asignación de badge al obtener certificado"
+	    })
+	    course.append("instructors", {"instructor": "Administrator"})
+	    course.insert()
+	    self.cert_course_name = course.name
+	    frappe.db.commit()
+	    print(f"Curso '{course_title}' creado (ID: {self.cert_course_name})")
+
+	    # --- 3. Crear capítulo ---
+	    chapter = frappe.get_doc({
+	        "doctype": "Course Chapter",
+	        "title": "Capítulo 1",
+	        "course": self.cert_course_name,
+	        "is_scorm_package": 0
+	    })
+	    chapter.flags.ignore_links = True
+	    chapter.insert()
+
+	    chapter_ref = frappe.get_doc({
+	        "doctype": "Chapter Reference",
+	        "chapter": chapter.name,
+	        "parent": self.cert_course_name,
+	        "parenttype": "LMS Course",
+	        "parentfield": "chapters",
+	        "idx": 1
+	    })
+	    chapter_ref.flags.ignore_links = True
+	    chapter_ref.insert()
+	    frappe.db.commit()
+
+	    # --- 4. Crear Lección 1 ---
+	    lesson1 = frappe.get_doc({
+	        "doctype": "Course Lesson",
+	        "title": "Lección 1: Introducción",
+	        "chapter": chapter.name,
+	        "course": self.cert_course_name
+	    })
+	    lesson1.flags.ignore_links = True
+	    lesson1.insert()
+	    self.cert_lesson1_name = lesson1.name
+
+	    lesson_ref1 = frappe.get_doc({
+	        "doctype": "Lesson Reference",
+	        "lesson": lesson1.name,
+	        "parent": chapter.name,
+	        "parenttype": "Course Chapter",
+	        "parentfield": "lessons",
+	        "idx": 1
+	    })
+	    lesson_ref1.flags.ignore_links = True
+	    lesson_ref1.insert()
+	    frappe.db.commit()
+
+	    # --- 5. Crear preguntas para el quiz ---
+	    question_names = []
+	    questions_data = [
+	        {
+	            "question": "¿Qué se obtiene al completar el curso?",
+	            "type": "Choices",
+	            "option_1": "Un badge",
+	            "option_2": "Un certificado",
+	            "option_3": "Ambos",
+	            "is_correct_1": 0,
+	            "is_correct_2": 0,
+	            "is_correct_3": 1
+	        },
+	        {
+	            "question": "¿Qué porcentaje se necesita para aprobar?",
+	            "type": "Choices",
+	            "option_1": "50%",
+	            "option_2": "70%",
+	            "option_3": "100%",
+	            "is_correct_1": 0,
+	            "is_correct_2": 1,
+	            "is_correct_3": 0
+	        }
+	    ]
+
+	    for q_data in questions_data:
+	        q = frappe.get_doc({
+	            "doctype": "LMS Question",
+	            "question": q_data["question"],
+	            "type": q_data["type"],
+	            "option_1": q_data.get("option_1"),
+	            "option_2": q_data.get("option_2"),
+	            "option_3": q_data.get("option_3"),
+	            "is_correct_1": q_data.get("is_correct_1", 0),
+	            "is_correct_2": q_data.get("is_correct_2", 0),
+	            "is_correct_3": q_data.get("is_correct_3", 0)
+	        })
+	        q.insert()
+	        question_names.append(q.name)
+	    frappe.db.commit()
+
+	    # --- 6. Crear quiz sin especificar "name" ---
+	    quiz = frappe.get_doc({
+	        "doctype": "LMS Quiz",
+	        "title": "Quiz para Badge de Certificado",
+	        "passing_percentage": 70,
+	        "course": self.cert_course_name,
+	        "max_attempts": 0,
+	        "total_marks": 10
+	    })
+	    quiz.insert()
+
+	    # Guardar el nombre REAL generado por Frappe
+	    quiz_name = quiz.name
+	    print(f"Quiz creado con nombre REAL: {quiz_name}")
+
+	    # Agregar preguntas al quiz
+	    for q_name in question_names:
+	        quiz.append("questions", {
+	            "question": q_name,
+	            "marks": 5
+	        })
+	    quiz.save()
+	    frappe.db.commit()
+	    self.cert_quiz_name = quiz_name
+
+	    # --- 7. Crear Lección 2 (con quiz) usando el nombre REAL ---
+	    lesson2 = frappe.get_doc({
+	        "doctype": "Course Lesson",
+	        "title": "Lección 2: Evaluación",
+	        "chapter": chapter.name,
+	        "course": self.cert_course_name,
+	        "content": frappe.as_json({
+	            "blocks": [
+	                {
+	                    "type": "quiz",
+	                    "data": {
+	                        "quiz": quiz_name
+	                    }
+	                }
+	            ]
+	        })
+	    })
+	    lesson2.flags.ignore_links = True
+	    lesson2.insert()
+	    self.cert_lesson2_name = lesson2.name
+
+	    lesson_ref2 = frappe.get_doc({
+	        "doctype": "Lesson Reference",
+	        "lesson": lesson2.name,
+	        "parent": chapter.name,
+	        "parenttype": "Course Chapter",
+	        "parentfield": "lessons",
+	        "idx": 2
+	    })
+	    lesson_ref2.flags.ignore_links = True
+	    lesson_ref2.insert()
+	    frappe.db.commit()
+
+	    # --- 8. Crear Assignment ---
+	    assignment_name = f"test-assignment-cert-badge-{frappe.generate_hash(length=6)}"
+	    assignment = frappe.get_doc({
+	        "doctype": "LMS Assignment",
+	        "title": "Assignment para Badge de Certificado",
+	        "name": assignment_name,
+	        "course": self.cert_course_name,
+	        "lesson": lesson2.name,
+	        "type": "Text",
+	        "question": "Describe el proceso de certificación en tus propias palabras."
+	    })
+	    assignment.insert()
+	    frappe.db.commit()
+	    self.cert_assignment_name = assignment_name
+	    print(f"Curso con capítulos, lecciones, quiz y assignment creados")
+
+	    # --- 9. Crear usuario estudiante ---
+	    student_email = f"test_student_cert_badge_{frappe.generate_hash(length=6)}@example.com"
+	    user = frappe.get_doc({
+	        "doctype": "User",
+	        "email": student_email,
+	        "first_name": "Test",
+	        "last_name": "Cert Badge Student",
+	        "send_welcome_email": 0
+	    })
+	    user.insert()
+	    user.add_roles("LMS Student")
+	    frappe.db.commit()
+	    self.cert_student_email = student_email
+	    print(f"Usuario '{student_email}' creado con rol LMS Student")
+
+	    # --- 10. Verificar NO tiene badges ---
+	    print("\nPaso 1: Verificar que el estudiante NO tiene badges previos")
+	    existing_badges = frappe.get_all("LMS Badge Assignment", {"member": student_email})
+	    self.assertEqual(len(existing_badges), 0)
+	    print("    El estudiante no tiene badges previos")
+
+	    # --- 11. Matricular ---
+	    print("\nPaso 2: Crear matrícula")
+	    enrollment = frappe.get_doc({
+	        "doctype": "LMS Enrollment",
+	        "member": student_email,
+	        "course": self.cert_course_name
+	    })
+	    enrollment.flags.ignore_links = True
+	    enrollment.insert()
+	    frappe.db.commit()
+	    print(f"    Matrícula creada: {enrollment.name}")
+
+	    # --- 12. Completar curso ---
+	    print("\nPaso 3: Completar curso")
+	    from lms.lms.doctype.course_lesson.course_lesson import save_progress
+	    from lms.lms.doctype.lms_quiz.lms_quiz import submit_quiz
+
+	    frappe.set_user(student_email)
+
+	    save_progress(lesson1.name, self.cert_course_name)
+	    frappe.db.commit()
+	    print("    Lección 1 completada")
+
+	    # Quiz
+	    results_high = [
+	        {"question_name": question_names[0], "answer": ["Ambos"]},
+	        {"question_name": question_names[1], "answer": ["70%"]}
+	    ]
+	    submission = submit_quiz(quiz=quiz_name, results=frappe.as_json(results_high))
+	    frappe.db.commit()
+	    print("    Quiz enviado y aprobado")
+
+	    # Assignment
+	    assignment_submission = frappe.get_doc({
+	        "doctype": "LMS Assignment Submission",
+	        "member": student_email,
+	        "assignment": assignment_name,
+	        "lesson": lesson2.name,
+	        "type": "Text",
+	        "answer": "El proceso de certificación requiere completar todas las lecciones.",
+	        "status": "Pass"
+	    })
+	    assignment_submission.flags.ignore_links = True
+	    assignment_submission.insert()
+	    frappe.db.commit()
+	    print("    Assignment enviado y aprobado")
+
+	    save_progress(lesson2.name, self.cert_course_name)
+	    frappe.db.commit()
+	    print("    Lección 2 completada")
+
+	    enrollment.reload()
+	    self.assertEqual(enrollment.progress, 100)
+	    print(f"    Progreso del curso: {enrollment.progress}%")
+
+	    # --- 13. Emitir certificado ---
+	    print("\nPaso 4: Emitir certificado")
+	    frappe.set_user("Administrator")
+
+	    template = frappe.db.get_value("Print Format", {"doc_type": "LMS Certificate"}, "name")
+
+	    certificate = frappe.get_doc({
+	        "doctype": "LMS Certificate",
+	        "member": student_email,
+	        "course": self.cert_course_name,
+	        "issue_date": frappe.utils.nowdate(),
+	        "published": 1,
+	        "template": template,
+	    })
+	    certificate.insert(ignore_permissions=True)
+	    frappe.db.commit()
+	    print(f"    Certificado emitido: {certificate.name}")
+
+	    # --- 14. Verificar badge ---
+	    print("\nPaso 5: Verificar que el badge fue asignado automáticamente")
+	    badge_assignments = frappe.get_all(
+	        "LMS Badge Assignment",
+	        {"member": student_email, "badge": self.cert_badge_name},
+	        ["name", "badge", "issued_on", "owner"]
+	    )
+	    self.assertEqual(len(badge_assignments), 1)
+
+	    assignment = badge_assignments[0]
+	    badge_title = frappe.db.get_value("LMS Badge", assignment.badge, "title")
+
+	    print(f"  Badge asignado automáticamente")
+	    print(f"     Badge: {badge_title}")
+	    print(f"     Fecha: {assignment.issued_on}")
+
+	    assignment_doc = frappe.get_doc("LMS Badge Assignment", assignment.name)
+	    self.assertEqual(assignment_doc.member, student_email)
+	    self.assertEqual(assignment_doc.badge, self.cert_badge_name)
+
+	    print("\n" + "="*70)
+	    print("(n.n)  INT-014: Prueba completada exitosamente")
+	    print("="*70)
 
     # ======================================================================
     # CASO NEGATIVO
