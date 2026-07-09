@@ -2,12 +2,15 @@
 Pruebas de integración para Módulo 11: Badges / Gamificación
 Casos: INT-013 (Badge de Primera Matrícula)
 """
+import os
+import unittest
 
 import frappe
-from frappe.tests import IntegrationTestCase
+# from frappe.tests import IntegrationTestCase
+from lms.lms.test_helpers import BaseTestUtils
 
-
-class TestBadgeEnrollment(IntegrationTestCase):
+@unittest.skipUnless(os.environ.get("RUN_INTEGRATION_TESTS"), "Skipping integration tests")
+class TestBadgeEnrollment(BaseTestUtils):
     """
     Prueba de integración para la asignación automática de badges
     Verifica que al matricular un estudiante sin badges, se le asigne el badge "Primera Matrícula"

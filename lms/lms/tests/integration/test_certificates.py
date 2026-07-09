@@ -2,6 +2,8 @@
 Pruebas de integración para Módulo 8: Certificaciones
 Casos: INT-009 (Certificado automático al completar curso)
 """
+import os
+import unittest
 
 import frappe
 import json
@@ -9,7 +11,7 @@ from frappe.tests import IntegrationTestCase
 from lms.lms.doctype.lms_quiz.lms_quiz import submit_quiz
 from lms.lms.doctype.lms_certificate.lms_certificate import create_certificate
 
-
+@unittest.skipUnless(os.environ.get("RUN_INTEGRATION_TESTS"), "Skipping integration tests")
 class TestCertificateCompletion(IntegrationTestCase):
     """
     Prueba de integración para la emisión automática de certificados
@@ -21,7 +23,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         super().setUp()
         frappe.set_user("Administrator")
 
-        # --- 1. Crear curso con certificación habilitada ---
+        # 1. Crear curso con certificación habilitada
         self.course_title = f"Curso Certificado {frappe.generate_hash(length=6)}"
         course = frappe.get_doc({
             "doctype": "LMS Course",
@@ -36,7 +38,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         self.course_name = course.name
         print(f"Curso '{self.course_title}' creado (ID: {self.course_name})")
 
-        # --- 2. Crear capítulo ---
+        # 2. Crear capítulo
         chapter = frappe.get_doc({
             "doctype": "Course Chapter",
             "title": "Capítulo 1",
@@ -59,11 +61,11 @@ class TestCertificateCompletion(IntegrationTestCase):
         chapter_ref.insert()
         print(f"Capítulo '{self.chapter_name}' creado")
 
-        # --- 3. Crear Lección 1 ---
+        # 3. Crear Lección 1
         self.lesson1_name = self._create_lesson("Lección 1: Introducción", idx=1)
         print(f"Lección 1 '{self.lesson1_name}' creada")
 
-        # --- 4. Crear preguntas ---
+        # 4. Crear preguntas
         self.question_names = []
         questions_data = [
             {
@@ -114,7 +116,7 @@ class TestCertificateCompletion(IntegrationTestCase):
             self.question_names.append(q.name)
             print(f"Pregunta creada: {q.name}")
 
-        # --- 5. Crear quiz ---
+        # 5. Crear quiz
         quiz = frappe.get_doc({
             "doctype": "LMS Quiz",
             "title": "Quiz de Certificación",
@@ -136,7 +138,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"Quiz '{self.quiz_name}' creado con passing_percentage=70%")
 
-        # --- 6. Crear Lección 2 (con quiz) ---
+        # 6. Crear Lección 2 (con quiz)
         self.lesson2_name = self._create_lesson_with_quiz(
             title="Lección 2: Evaluación",
             quiz_name=self.quiz_name,
@@ -144,7 +146,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         )
         print(f"Lección 2 '{self.lesson2_name}' creada con quiz")
 
-        # --- 7. Crear assignment CON el campo obligatorio 'question' ---
+        # 7. Crear assignment CON el campo obligatorio 'question'
         self.assignment_name = f"test-assignment-{frappe.generate_hash(length=6)}"
         assignment = frappe.get_doc({
             "doctype": "LMS Assignment",
@@ -159,7 +161,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"Assignment '{self.assignment_name}' creado")
 
-        # --- 8. Crear usuario estudiante ---
+        # 8. Crear usuario estudiante
         self.student_email = f"test_student_cert_{frappe.generate_hash(length=6)}@example.com"
         user = frappe.get_doc({
             "doctype": "User",
@@ -251,7 +253,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         print(">  INT-009: Certificado automático al completar curso")
         print("="*70)
 
-        # --- 1. Crear matrícula ---
+        # 1. Crear matrícula
         print("\nPaso 1: Crear matrícula")
         enrollment = frappe.get_doc({
             "doctype": "LMS Enrollment",
@@ -263,13 +265,13 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"    Matrícula creada: {enrollment.name}")
 
-        # --- 2. Verificar progreso inicial ---
+        # 2. Verificar progreso inicial
         print("\nPaso 2: Verificar progreso inicial (0%)")
         enrollment.reload()
         self.assertEqual(enrollment.progress, 0)
         print(f"    Progreso inicial: {enrollment.progress}%")
 
-        # --- 3. Completar Lección 1 ---
+        # 3. Completar Lección 1
         print("\nPaso 3: Completar Lección 1")
         from lms.lms.doctype.course_lesson.course_lesson import save_progress
 
@@ -281,10 +283,10 @@ class TestCertificateCompletion(IntegrationTestCase):
         enrollment.reload()
         print(f"    Progreso parcial: {enrollment.progress}%")
 
-        # --- 4. Completar Lección 2 ---
+        # 4. Completar Lección 2
         print("\nPaso 4: Completar Lección 2")
 
-        # 4.1 Enviar quiz (100%)
+        # Enviar quiz (100%)
         results_high = [
             {"question_name": self.question_names[0], "answer": ["París"]},
             {"question_name": self.question_names[1], "answer": ["4"]},
@@ -298,7 +300,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"    Quiz enviado y aprobado")
 
-        # 4.2 Enviar assignment
+        # Enviar assignment
         assignment_submission = frappe.get_doc({
             "doctype": "LMS Assignment Submission",
             "member": self.student_email,
@@ -313,18 +315,18 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"    Assignment enviado y aprobado")
 
-        # 4.3 Marcar lección completada
+        # Marcar lección completada
         save_progress(self.lesson2_name, self.course_name)
         frappe.db.commit()
         print(f"    Lección 2 completada")
 
-        # --- 5. Verificar progreso 100% ---
+        # 5. Verificar progreso 100%
         print("\nPaso 5: Verificar progreso 100%")
         enrollment.reload()
         self.assertEqual(enrollment.progress, 100)
         print(f"    Progreso del curso: {enrollment.progress}%")
 
-        # --- 6. Verificar NO hay certificado ---
+        # 6. Verificar NO hay certificado
         print("\nPaso 6: Verificar que NO hay certificado antes de emitir")
         certificate_exists = frappe.db.exists(
 		    "LMS Certificate",
@@ -333,7 +335,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         self.assertFalse(certificate_exists)
         print("    No hay certificado antes de emitir")
 
-        # --- 7. Crear certificado ---
+        # 7. Crear certificado
         print("\nPaso 7: Crear certificado")
         #frappe.set_user(self.student_email)i
         frappe.set_user("Administrator")
@@ -358,7 +360,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         self.assertIsNotNone(certificate)
         print(f"    Certificado creado: {certificate.name}")
 
-        # --- 8. Verificar datos ---
+        # 8. Verificar datos
         print("\nPaso 8: Verificar datos del certificado")
         cert_doc = frappe.get_doc("LMS Certificate", certificate.name)
 
@@ -388,7 +390,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         print(">  INT-010: Solicitar certificado manual")
         print("="*70)
 
-        # --- 1. Crear matrícula ---
+        # 1. Crear matrícula
         print("\nPaso 1: Crear matrícula")
         enrollment = frappe.get_doc({
             "doctype": "LMS Enrollment",
@@ -400,7 +402,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"    Matrícula creada: {enrollment.name}")
 
-        # --- 2. Completar curso al 100% ---
+        # 2. Completar curso al 100% ---
         print("\nPaso 2: Completar curso")
         from lms.lms.doctype.course_lesson.course_lesson import save_progress
 
@@ -450,7 +452,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         self.assertEqual(enrollment.progress, 100)
         print(f"    Progreso del curso: {enrollment.progress}%")
 
-        # --- 3. Verificar que NO hay certificado antes ---
+        # 3. Verificar que NO hay certificado antes
         print("\nPaso 3: Verificar que NO hay certificado antes")
         certificate_exists = frappe.db.exists(
             "LMS Certificate",
@@ -459,7 +461,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         self.assertFalse(certificate_exists)
         print("    No hay certificado antes de solicitar")
 
-        # --- 4. Crear Certificate Request ---
+        # 4. Crear Certificate Request
         print("\nPaso 4: Crear solicitud de certificado")
         frappe.set_user(self.student_email)
 
@@ -477,7 +479,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         self.assertIsNotNone(certificate_request.name)
         print(f"    Solicitud creada: {certificate_request.name}")
 
-        # --- 5. Verificar datos del request ---
+        # 5. Verificar datos del request
         print("\nPaso 5: Verificar datos de la solicitud")
         request_doc = frappe.get_doc("LMS Certificate Request", certificate_request.name)
 
@@ -490,7 +492,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         print(f"    Solicitud vinculada al curso: {request_doc.course}")
         print(f"    Estado: {request_doc.status}")
 
-        # --- 6. Verificar que NO hay certificado aún ---
+        # 6. Verificar que NO hay certificado aún
         print("\nPaso 6: Verificar que NO hay certificado aún")
         certificate_exists = frappe.db.exists(
             "LMS Certificate",
@@ -515,10 +517,10 @@ class TestCertificateCompletion(IntegrationTestCase):
         INT-009-NEG: Verificar que un curso incompleto NO genera certificado
         """
         print("\n" + "="*70)
-        print("🧪 INT-009-NEG: Curso incompleto NO genera certificado")
+        print(">  INT-009-NEG: Curso incompleto NO genera certificado")
         print("="*70)
 
-        # --- 1. Crear matrícula ---
+        # 1. Crear matrícula
         print("\nPaso 1: Crear matrícula")
         enrollment = frappe.get_doc({
             "doctype": "LMS Enrollment",
@@ -530,7 +532,7 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"    Matrícula creada: {enrollment.name}")
 
-        # --- 2. Completar solo Lección 1 ---
+        # 2. Completar solo Lección 1
         print("\nPaso 2: Completar solo la Lección 1")
         from lms.lms.doctype.course_lesson.course_lesson import save_progress
 
@@ -539,13 +541,13 @@ class TestCertificateCompletion(IntegrationTestCase):
         frappe.db.commit()
         print(f"    Lección 1 completada")
 
-        # --- 3. Verificar progreso NO es 100% ---
+        # 3. Verificar progreso NO es 100%
         print("\nPaso 3: Verificar progreso NO es 100%")
         enrollment.reload()
         self.assertNotEqual(enrollment.progress, 100)
         print(f"    Progreso: {enrollment.progress}% (curso incompleto)")
 
-        # --- 4. Intentar crear certificado (debe fallar) ---
+        # 4. Intentar crear certificado (debe fallar)
         print("\nPaso 4: Intentar crear certificado (debe fallar)")
         frappe.set_user(self.student_email)
 

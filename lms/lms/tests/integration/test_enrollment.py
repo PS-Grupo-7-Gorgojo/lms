@@ -2,12 +2,14 @@
 Pruebas de integración para Módulo 4: Matrículas y Progreso
 Casos: INT-006 (Completar lección crea progreso automático)
 """
+import os
+import unittest
 
 import frappe
-from frappe.tests import IntegrationTestCase
+# from frappe.tests import IntegrationTestCase
 from lms.lms.test_helpers import BaseTestUtils
 
-
+@unittest.skipUnless(os.environ.get("RUN_INTEGRATION_TESTS"), "Skipping integration tests")
 class TestEnrollmentProgress(BaseTestUtils):
     """
     Prueba de integración para la relación Enrollment → Course Progress
@@ -19,7 +21,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         super().setUp()
         frappe.set_user("Administrator")
 
-        # --- 1. Crear curso ---
+        # 1. Crear curso
         self.course_title = f"Curso para Progreso {frappe.generate_hash(length=6)}"
         course = frappe.get_doc({
             "doctype": "LMS Course",
@@ -34,7 +36,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         self.course_name = course.name
         print(f" Curso '{self.course_title}' creado (ID: {self.course_name})")
 
-        # --- 2. Crear capítulo CON referencia en el curso ---
+        # 2. Crear capítulo CON referencia en el curso
         chapter = frappe.get_doc({
             "doctype": "Course Chapter",
             "title": "Capítulo 1: Fundamentos",
@@ -57,7 +59,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         chapter_ref.insert()
         print(f" Capítulo '{self.chapter_name}' creado y referenciado en el curso")
 
-        # --- 3. Crear lección CON referencia en el capítulo ---
+        # 3. Crear lección CON referencia en el capítulo
         lesson = frappe.get_doc({
             "doctype": "Course Lesson",
             "title": "Lección 1: Introducción",
@@ -80,7 +82,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         lesson_ref.insert()
         print(f" Lección '{self.lesson_name}' creada y referenciada en el capítulo")
 
-        # --- 4. Crear usuario estudiante ---
+        # 4. Crear usuario estudiante
         self.student_email = f"test_student_progress_{frappe.generate_hash(length=6)}@example.com"
         user = frappe.get_doc({
             "doctype": "User",
@@ -100,7 +102,7 @@ class TestEnrollmentProgress(BaseTestUtils):
 
     # ======================================================================
     # INT-006: Completar lección crea progreso automático
-    # ======================================================================
+    # ====================================================================
 
     def test_int_006_lesson_completion_creates_progress(self):
         """
@@ -110,7 +112,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         print("🧪 INT-006: Completar lección crea progreso automático")
         print("="*70)
 
-        # --- 1. Crear matrícula ---
+        # 1. Crear matrícula
         print("\nPaso 1: Crear matrícula")
         enrollment = frappe.get_doc({
             "doctype": "LMS Enrollment",
@@ -122,7 +124,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         frappe.db.commit()
         print(f"     Matrícula creada: {enrollment.name}")
 
-        # --- 2. Verificar que NO existe progreso después de la matrícula ---
+        # 2. Verificar que NO existe progreso después de la matrícula
         print("\nPaso 2: Verificar que NO existe progreso después de la matrícula")
         progress_after_enrollment = frappe.db.exists(
             "LMS Course Progress",
@@ -135,7 +137,7 @@ class TestEnrollmentProgress(BaseTestUtils):
             "El progreso existe después de la matrícula (comportamiento incorrecto)")
         print("    No existe progreso después de la matrícula (comportamiento esperado)")
 
-        # --- 3. Completar la primera lección ---
+        # 3. Completar la primera lección
         print("\nPaso 3: Completar la primera lección")
         from lms.lms.doctype.course_lesson.course_lesson import save_progress
 
@@ -144,7 +146,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         frappe.db.commit()
         print(f"    Lección '{self.lesson_name}' completada (resultado: {result})")
 
-        # --- 4. Verificar que el progreso se creó ---
+        # 4. Verificar que el progreso se creó
         print("\nPaso 4: Verificar que el progreso se creó automáticamente")
         progress = frappe.db.get_value(
             "LMS Course Progress",
@@ -161,7 +163,7 @@ class TestEnrollmentProgress(BaseTestUtils):
         print(f"    Progreso creado automáticamente: {progress.name}")
         print(f"    Status: {progress.status}")
 
-        # --- 5. Verificar relaciones ---
+        # 5. Verificar relaciones
         print("\nPaso 5: Verificar relaciones del progreso")
         progress_doc = frappe.get_doc("LMS Course Progress", progress.name)
 

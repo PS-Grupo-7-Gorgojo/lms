@@ -30,7 +30,7 @@ class TestBatchIntegration(BaseTestUtils):
 
 		# Crear curso
 		self.course = self._create_course(
-			title=f"Course for Batch Delete {self.test_id}", 
+			title=f"Course for Batch Delete {self.test_id}",
 			instructor=self.instructor_email
 		)
 
@@ -70,10 +70,10 @@ class TestBatchIntegration(BaseTestUtils):
 		INT-020: Verificar que:
 		1. La eliminación normal de un Batch mediante frappe.delete_doc sea prevenida
 		   cuando existan clases en vivo (LMS Live Class) vinculadas (LinkExistsError).
-		2. La llamada al endpoint delete_batch de la API elimine el lote por cascada 
+		2. La llamada al endpoint delete_batch de la API elimine el lote por cascada
 		   a nivel de inscripciones pero deje huérfanas las clases en vivo (comportamiento actual).
 		"""
-		
+
 		# Crear inscripción de estudiante en el lote
 		batch_enrollment = self._create_batch_enrollment(self.student_email, self.batch.name)
 

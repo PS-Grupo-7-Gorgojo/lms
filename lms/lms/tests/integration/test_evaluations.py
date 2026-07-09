@@ -2,13 +2,15 @@
 Pruebas de integración para Módulo 5: Evaluaciones
 Casos: INT-007 (Quiz requiere nota aprobatoria)
 """
+import os
+import unittest
 
 import frappe
 import json
 from frappe.tests import IntegrationTestCase
 from lms.lms.doctype.lms_quiz.lms_quiz import submit_quiz
 
-
+@unittest.skipUnless(os.environ.get("RUN_INTEGRATION_TESTS"), "Skipping integration tests")
 class TestQuizValidation(IntegrationTestCase):
     """
     Prueba de integración para la validación de quizzes

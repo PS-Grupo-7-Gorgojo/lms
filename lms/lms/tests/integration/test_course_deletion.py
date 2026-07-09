@@ -2,6 +2,8 @@
 Pruebas de integración para Módulo 3 y 4: Eliminación de curso con estudiantes
 Casos: INT-019 (Eliminar curso con estudiantes y submissions)
 """
+import os
+import unittest
 
 import frappe
 import json
@@ -9,7 +11,7 @@ from frappe.tests import IntegrationTestCase
 from lms.lms.api import delete_course
 from lms.lms.doctype.lms_quiz.lms_quiz import submit_quiz
 
-
+@unittest.skipUnless(os.environ.get("RUN_INTEGRATION_TESTS"), "Skipping integration tests")
 class TestCourseDeletion(IntegrationTestCase):
     """
     Prueba de integración para la eliminación de cursos con estudiantes
