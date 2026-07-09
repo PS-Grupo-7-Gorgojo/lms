@@ -215,13 +215,8 @@ class BaseTestUtils(UnitTestCase):
 				roles=["Course Creator"],
 			)
 
-		if not frappe.db.exists("User", evaluator):
-			self._create_user(
-				email=evaluator,
-				first_name="Frappe",
-				last_name="Evaluator",
-				roles=["Batch Evaluator"],
-			)
+		if not frappe.db.exists("Course Evaluator", evaluator):
+			self._create_evaluator(evaluator)
 
 		batch = frappe.new_doc("LMS Batch")
 		batch.update(
