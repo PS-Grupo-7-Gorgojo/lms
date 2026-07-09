@@ -56,6 +56,14 @@ class BaseTestUtils(UnitTestCase):
 			)
 			self.cleanup_items.append(("LMS Category", "Business"))
 
+		if not frappe.db.exists("User", instructor):
+			self._create_user(
+				email=instructor,
+				first_name="Frappe",
+				last_name="Instructor",
+				roles=["Course Creator"],
+			)
+
 		course = frappe.new_doc("LMS Course")
 		course.update(
 			{
@@ -161,6 +169,14 @@ class BaseTestUtils(UnitTestCase):
 		return progress
 
 	def _create_evaluator(self, evaluator_email="frappe@example.com"):
+		if not frappe.db.exists("User", evaluator_email):
+			self._create_user(
+				email=evaluator_email,
+				first_name="Frappe",
+				last_name="Evaluator",
+				roles=["Batch Evaluator"],
+			)
+
 		if frappe.db.exists("Course Evaluator", evaluator_email):
 			return frappe.get_doc("Course Evaluator", evaluator_email)
 
@@ -190,6 +206,22 @@ class BaseTestUtils(UnitTestCase):
 		existing = frappe.db.exists("LMS Batch", {"title": title})
 		if existing:
 			return frappe.get_doc("LMS Batch", existing)
+
+		if not frappe.db.exists("User", instructor):
+			self._create_user(
+				email=instructor,
+				first_name="Frappe",
+				last_name="Instructor",
+				roles=["Course Creator"],
+			)
+
+		if not frappe.db.exists("User", evaluator):
+			self._create_user(
+				email=evaluator,
+				first_name="Frappe",
+				last_name="Evaluator",
+				roles=["Batch Evaluator"],
+			)
 
 		batch = frappe.new_doc("LMS Batch")
 		batch.update(
