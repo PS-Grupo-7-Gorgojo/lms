@@ -198,7 +198,7 @@ class TestQuizValidation(IntegrationTestCase):
         print("="*70)
 
         # --- 1. Crear matrícula ---
-        print("\n📖 Paso 1: Crear matrícula")
+        print("\nPaso 1: Crear matrícula")
         enrollment = frappe.get_doc({
             "doctype": "LMS Enrollment",
             "member": self.student_email,
@@ -257,7 +257,7 @@ class TestQuizValidation(IntegrationTestCase):
         print(f"{submission_low['percentage']}% < 70% (NO aprueba)")
 
         # --- 4. Verificar que el progreso NO avanzó ---
-        print("\n📖 Paso 4: Verificar progreso NO avanzó")
+        print("\nPaso 4: Verificar progreso NO avanzó")
         progress_count_low = frappe.db.count(
             "LMS Course Progress",
             {
@@ -315,7 +315,7 @@ class TestQuizValidation(IntegrationTestCase):
         print("    Progreso avanzó")
 
         # --- 7. Verificar lección completada ---
-        print("\n📖 Paso 7: Verificar lección completada")
+        print("\nPaso 7: Verificar lección completada")
         progress = frappe.db.get_value(
             "LMS Course Progress",
             {
