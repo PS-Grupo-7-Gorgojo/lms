@@ -18,12 +18,18 @@ class BaseTestUtils(UnitTestCase):
 		self.cleanup_items = []
 
 	def tearDown(self):
+		has_badge_deletion = False
 		for item_type, item_name in reversed(self.cleanup_items):
 			if frappe.db.exists(item_type, item_name):
 				try:
 					frappe.delete_doc(item_type, item_name, force=True)
+					if item_type == "LMS Badge":
+						has_badge_deletion = True
 				except Exception as e:
 					print(f"Error deleting {item_type} {item_name}: {e}")
+		if has_badge_deletion:
+			frappe.cache_manager.clear_doctype_map("LMS Badge")
+			frappe.cache().delete_key("doctype_map_LMS Badge")
 
 	def _create_user(self, email, first_name, last_name, roles, user_type="Website User"):
 		if frappe.db.exists("User", email):
