@@ -126,7 +126,7 @@ jobs:
 
   coverage:
     name: Coverage Wrap Up
-    needs: unit-tests
+    needs: tests-suite
     runs-on: ubuntu-latest
 
     steps:
@@ -148,7 +148,7 @@ jobs:
 
   build:
     name: Build & Push Docker Image
-    needs: unit-tests
+    needs: tests-suite
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
