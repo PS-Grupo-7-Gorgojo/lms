@@ -1,1 +1,4 @@
+from .test_import_export import TestImportExportIntegration
+from .test_permissions import TestPermissionsIntegration
+from .test_batch import TestBatchIntegration
 

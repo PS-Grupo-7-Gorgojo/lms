@@ -5,9 +5,10 @@ Casos: INT-006 (Completar lección crea progreso automático)
 
 import frappe
 from frappe.tests import IntegrationTestCase
+from lms.lms.test_helpers import BaseTestUtils
 
 
-class TestEnrollmentProgress(IntegrationTestCase):
+class TestEnrollmentProgress(BaseTestUtils):
     """
     Prueba de integración para la relación Enrollment → Course Progress
     Verifica que al completar la primera lección, se cree automáticamente el progreso
