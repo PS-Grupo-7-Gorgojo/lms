@@ -171,7 +171,7 @@ class TestLMSCourse(BaseTestUtils):
 						"instructors": [{"instructor": "frappe@example.com"}],  
 				})  
 				with self.assertRaises(frappe.ValidationError):  
-						course.save()  
+						course.validate()  
 
 	# UT-LMS-CRS-011
 	def test_validate_payments_app_passes_when_installed(self):  
@@ -206,7 +206,7 @@ class TestLMSCourse(BaseTestUtils):
 				"instructors": [{"instructor": "frappe@example.com"}],  
 		})  
 		with self.assertRaises(frappe.ValidationError):  
-				course.save()  
+				course.validate()  
 
 	# UT-LMS-CRS-013
 	def test_validate_certification_paid_cert_no_evaluator_throws(self):  
@@ -225,7 +225,7 @@ class TestLMSCourse(BaseTestUtils):
 				"instructors": [{"instructor": "frappe@example.com"}],  
 		})  
 		with self.assertRaises(frappe.ValidationError):  
-				course.save()  
+				course.validate()  
 
 	# UT-LMS-CRS-014
 	def test_validate_certification_paid_cert_no_timezone_throws(self):  
@@ -244,7 +244,7 @@ class TestLMSCourse(BaseTestUtils):
 				"instructors": [{"instructor": "frappe@example.com"}],  
 		})  
 		with self.assertRaises(frappe.ValidationError):  
-				course.save()  
+				course.validate()  
 
 	# UT-LMS-CRS-015
 	def test_validate_amount_paid_course_negative_price_throws(self):  
@@ -262,7 +262,7 @@ class TestLMSCourse(BaseTestUtils):
 						"instructors": [{"instructor": "frappe@example.com"}],  
 				})  
 				with self.assertRaises(frappe.ValidationError):  
-						course.save()  
+						course.validate()  
 
 	# UT-LMS-CRS-016
 	def test_validate_amount_paid_course_no_currency_throws(self):  
@@ -280,7 +280,7 @@ class TestLMSCourse(BaseTestUtils):
 						"instructors": [{"instructor": "frappe@example.com"}],  
 				})  
 				with self.assertRaises(frappe.ValidationError):  
-						course.save()  
+						course.validate()  
 
 	# UT-LMS-CRS-017
 	def test_validate_amount_paid_certificate_zero_price_throws(self):  
@@ -299,7 +299,7 @@ class TestLMSCourse(BaseTestUtils):
 				"instructors": [{"instructor": "frappe@example.com"}],  
 		})  
 		with self.assertRaises(frappe.ValidationError):  
-				course.save()  
+				course.validate()  
 
 	# UT-LMS-CRS-018
 	def test_validate_amount_paid_certificate_no_currency_throws(self):  
@@ -318,7 +318,7 @@ class TestLMSCourse(BaseTestUtils):
 				"instructors": [{"instructor": "frappe@example.com"}],  
 		})  
 		with self.assertRaises(frappe.ValidationError):  
-				course.save() 
+				course.validate() 
 
 	# UT-LMS-CRS-019
 	def test_update_course_statistics(self):  
