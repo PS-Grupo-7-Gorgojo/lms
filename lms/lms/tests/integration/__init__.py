@@ -13,3 +13,4 @@ from .test_badges import TestBadgeEnrollment
 from .test_certificates import TestCertificateCompletion
 from .test_course_deletion import TestCourseDeletion
 from .test_evaluations import TestQuizValidation
+from .test_search import TestSearchIntegration
