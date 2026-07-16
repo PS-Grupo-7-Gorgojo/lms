@@ -2,6 +2,7 @@
 Pruebas de integración para Módulo 4: Matrículas y Progreso
 Casos: INT-006 (Completar lección crea progreso automático)
        INT-023: Matricularse a curso ya completado
+	   INT-025: Concurrencia en último cupo
 """
 import os
 import unittest
@@ -278,4 +279,195 @@ class TestEnrollmentProgress(BaseTestUtils):
 	    print("(n.n) INT-023: Prueba completada exitosamente")
 	    print("="*70)
 
+	# ======================================================================
+	# INT-025: Concurrencia en último cupo
+	# ======================================================================
+
+    # def test_int_025_concurrent_enrollment_last_seat(self):
+	   #  """
+	   #  INT-025: Verificar que con cupo de 1 estudiante y 2 requests concurrentes,
+	   #  solo una matrícula sea exitosa y la otra rechazada con "Course is full"
+	   #  """
+	   #  print("\n" + "="*70)
+	   #  print(">  INT-025: Concurrencia en último cupo")
+	   #  print("="*70)
+
+	   #  # --- 1. Crear curso con cupo limitado (seat_count=1) ---
+	   #  print("\nPaso 1: Crear curso con cupo para 1 estudiante")
+
+	   #  course_title = f"Curso Cupo {frappe.generate_hash(length=6)}"
+	   #  course = frappe.get_doc({
+	   #      "doctype": "LMS Course",
+	   #      "title": course_title,
+	   #      "published": 1,
+	   #      "seat_count": 1,
+	   #      "short_introduction": "Curso con cupo limitado",
+	   #      "description": "Curso para probar concurrencia en último cupo"
+	   #  })
+	   #  course.append("instructors", {"instructor": "Administrator"})
+	   #  course.insert()
+	   #  course_name = course.name
+	   #  print(f"    Curso '{course_title}' creado (ID: {course_name})")
+	   #  print(f"    Cupo máximo: 1")
+
+	   #  # --- 2. Crear capítulo y lección ---
+	   #  print("\nPaso 2: Crear capítulo y lección")
+	   #  chapter = frappe.get_doc({
+	   #      "doctype": "Course Chapter",
+	   #      "title": "Capítulo 1",
+	   #      "course": course_name,
+	   #      "is_scorm_package": 0
+	   #  })
+	   #  chapter.flags.ignore_links = True
+	   #  chapter.insert()
+
+	   #  chapter_ref = frappe.get_doc({
+	   #      "doctype": "Chapter Reference",
+	   #      "chapter": chapter.name,
+	   #      "parent": course_name,
+	   #      "parenttype": "LMS Course",
+	   #      "parentfield": "chapters",
+	   #      "idx": 1
+	   #  })
+	   #  chapter_ref.flags.ignore_links = True
+	   #  chapter_ref.insert()
+
+	   #  lesson = frappe.get_doc({
+	   #      "doctype": "Course Lesson",
+	   #      "title": "Lección 1",
+	   #      "chapter": chapter.name,
+	   #      "course": course_name
+	   #  })
+	   #  lesson.flags.ignore_links = True
+	   #  lesson.insert()
+
+	   #  lesson_ref = frappe.get_doc({
+	   #      "doctype": "Lesson Reference",
+	   #      "lesson": lesson.name,
+	   #      "parent": chapter.name,
+	   #      "parenttype": "Course Chapter",
+	   #      "parentfield": "lessons",
+	   #      "idx": 1
+	   #  })
+	   #  lesson_ref.flags.ignore_links = True
+	   #  lesson_ref.insert()
+	   #  frappe.db.commit()
+	   #  print(f"    Capítulo y lección creados")
+
+	   #  # --- 3. Crear 2 estudiantes ---
+	   #  print("\nPaso 3: Crear 2 estudiantes")
+	   #  student1_email = f"test_student_conc1_{frappe.generate_hash(length=6)}@example.com"
+	   #  student2_email = f"test_student_conc2_{frappe.generate_hash(length=6)}@example.com"
+
+	   #  for email in [student1_email, student2_email]:
+	   #      user = frappe.get_doc({
+	   #          "doctype": "User",
+	   #          "email": email,
+	   #          "first_name": "Test",
+	   #          "last_name": f"Concurrent {email[:6]}",
+	   #          "send_welcome_email": 0
+	   #      })
+	   #      user.insert()
+	   #      user.add_roles("LMS Student")
+	   #  frappe.db.commit()
+	   #  print(f"    Estudiante 1: {student1_email}")
+	   #  print(f"    Estudiante 2: {student2_email}")
+
+	   #  # --- 4. Definir función para matricular (sin threading) ---
+	   #  enrollments_created = []
+	   #  errors = []
+
+	   #  def enroll_student(email):
+	   #      try:
+	   #          enrollment = frappe.get_doc({
+	   #              "doctype": "LMS Enrollment",
+	   #              "member": email,
+	   #              "course": course_name
+	   #          })
+	   #          enrollment.flags.ignore_links = True
+	   #          enrollment.insert()
+	   #          frappe.db.commit()
+	   #          enrollments_created.append(email)
+	   #          return True
+	   #      except Exception as e:
+	   #          frappe.db.rollback()
+	   #          errors.append(str(e))
+	   #          return False
+
+	   #  # --- 5. Simular concurrencia (sin threads) ---
+	   #  print("\nPaso 4: Simular concurrencia (requests simultáneas)")
+	   #  # Ejecutar ambas funciones "simultáneamente" (una después de otra, pero con commits intermedios)
+
+	   #  # Primero, intentar matricular al estudiante 1
+	   #  success1 = enroll_student(student1_email)
+
+	   #  # Luego, intentar matricular al estudiante 2 (debería fallar si el cupo está lleno)
+	   #  success2 = enroll_student(student2_email)
+
+	   #  # --- 6. Verificar solo 1 matrícula exitosa ---
+	   #  print("\nPaso 5: Verificar solo 1 matrícula exitosa")
+	   #  print(f"    Estudiante 1: {' Éxito' if success1 else '[X] Falló'}")
+	   #  print(f"    Estudiante 2: {' Éxito' if success2 else '[X] Falló'}")
+
+	   #  success_count = sum([1 for s in [success1, success2] if s])
+	   #  self.assertEqual(success_count, 1, f"Se crearon {success_count} matrículas exitosas en lugar de 1")
+	   #  print(f"     Solo 1 matrícula fue exitosa")
+
+	   #  # --- 7. Verificar error de cupo ---
+	   #  print("\nPaso 6: Verificar mensaje de error")
+	   #  if errors:
+	   #      error_msg = errors[0].lower()
+	   #      print(f"    Error capturado: {error_msg[:150]}...")
+
+	   #      self.assertTrue(
+	   #          "full" in error_msg or "seat" in error_msg or "already" in error_msg or "duplicate" in error_msg,
+	   #          f"El error no menciona 'full', 'seat' o 'already'. Error: {error_msg}"
+	   #      )
+	   #      print("     Error correcto (curso lleno o duplicado)")
+	   #  else:
+	   #      # Si no hay errores, verificar que solo hay una matrícula
+	   #      enrollments = frappe.get_all("LMS Enrollment", {"course": course_name})
+	   #      self.assertEqual(len(enrollments), 1, f"Se encontraron {len(enrollments)} matrículas")
+	   #      print("     No hay errores, pero solo 1 matrícula creada (comportamiento esperado)")
+
+	   #  # --- 8. Verificar solo 1 matrícula en la BD ---
+	   #  print("\nPaso 7: Verificar solo 1 matrícula en la base de datos")
+	   #  frappe.set_user("Administrator")
+	   #  enrollments = frappe.get_all(
+	   #      "LMS Enrollment",
+	   #      {"course": course_name}
+	   #  )
+	   #  self.assertEqual(len(enrollments), 1, f"Se encontraron {len(enrollments)} matrículas en lugar de 1")
+	   #  print(f"     Solo 1 matrícula registrada en la BD")
+
+	   #  # --- 9. Limpiar datos de prueba ---
+	   #  print("\nPaso 8: Limpiar datos de prueba")
+	   #  for enrollment in frappe.get_all("LMS Enrollment", {"course": course_name}):
+	   #      frappe.delete_doc("LMS Enrollment", enrollment.name, force=True, ignore_permissions=True)
+
+	   #  for email in [student1_email, student2_email]:
+	   #      if frappe.db.exists("User", email):
+	   #          frappe.delete_doc("User", email, force=True, ignore_permissions=True)
+
+	   #  if frappe.db.exists("LMS Course", course_name):
+	   #      course_doc = frappe.get_doc("LMS Course", course_name)
+	   #      for chapter_ref in course_doc.get("chapters", []):
+	   #          chapter_name = chapter_ref.get("chapter")
+	   #          if chapter_name and frappe.db.exists("Course Chapter", chapter_name):
+	   #              chapter_doc = frappe.get_doc("Course Chapter", chapter_name)
+	   #              for lesson_ref in chapter_doc.get("lessons", []):
+	   #                  lesson_name = lesson_ref.get("lesson")
+	   #                  if lesson_name and frappe.db.exists("Course Lesson", lesson_name):
+	   #                      frappe.delete_doc("Course Lesson", lesson_name, force=True, ignore_permissions=True)
+	   #              frappe.delete_doc("Course Chapter", chapter_name, force=True, ignore_permissions=True)
+	   #      frappe.delete_doc("LMS Course", course_name, force=True, ignore_permissions=True)
+	   #  frappe.db.commit()
+	   #  print("     Datos de prueba eliminados")
+
+	   #  print("\n" + "="*70)
+	   #  print("(n.n) INT-025: Prueba completada exitosamente")
+	   #  print("   - 2 requests concurrentes con cupo=1")
+	   #  print("   - Solo 1 matrícula exitosa")
+	   #  print("   - La otra rechazada (curso lleno o duplicado)")
+	   #  print("="*70)
 
