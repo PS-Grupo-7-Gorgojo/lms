@@ -1,3 +1,8 @@
+"""
+Pruebas de integración para Módulo 12: Importación/Exportación
+Casos: INT-015 (Exportar curso completo a .zip)
+       INT-016 (Importar curso desde .zip válido)
+"""
 import glob
 import os
 import re
@@ -24,23 +29,23 @@ class TestImportExportIntegration(BaseTestUtils):
 
 	def _setup_unique_course_flow(self):
 		self.test_id = frappe.generate_hash()[:8]
-		
+
 		# Crear usuarios de prueba
 		self.student1 = self._create_user(f"student1_{self.test_id}@example.com", "Ashley", "Smith", ["LMS Student"])
 		self.student2 = self._create_user(f"student2_{self.test_id}@example.com", "John", "Doe", ["LMS Student"])
 		self.admin = self._create_user(
 			f"frappe_{self.test_id}@example.com", "Frappe", "Admin", ["Moderator", "Course Creator", "Batch Evaluator"]
 		)
-		
+
 		# Crear curso
 		self.course = self._create_course(title=f"Utility Course {self.test_id}", instructor=self.admin.email)
-		
+
 		# Crear evaluaciones
 		self.questions = self._create_quiz_questions()
 		self.quiz = self._create_quiz(title=f"Utility Quiz {self.test_id}")
 		self.assignment = self._create_assignment(title=f"Utility Assignment {self.test_id}")
 		self.programming_exercise = self._create_programming_exercise(title=f"Utility Programming Exercise {self.test_id}")
-		
+
 		# Crear capítulos y lecciones
 		self._setup_chapters()
 
@@ -71,7 +76,7 @@ class TestImportExportIntegration(BaseTestUtils):
 		# Inspeccionar el contenido del ZIP
 		with zipfile.ZipFile(latest_file, "r") as zip_ref:
 			file_list = zip_ref.namelist()
-			
+
 			# Comprobar archivos fundamentales
 			self.assertIn("course.json", file_list, "Falta course.json en el ZIP")
 			self.assertIn("instructors.json", file_list, "Falta instructors.json en el ZIP")
@@ -86,7 +91,7 @@ class TestImportExportIntegration(BaseTestUtils):
 
 			# Comprobar que exportó evaluaciones (cuestionarios, tareas, ejercicios)
 			assessment_files = [
-				f for f in file_list 
+				f for f in file_list
 				if f.startswith("assessments/") and f.endswith(".json") and len(f.split("/")) == 2
 			]
 			self.assertEqual(len(assessment_files), 3, "No se exportaron las 3 evaluaciones esperadas")
@@ -118,13 +123,13 @@ class TestImportExportIntegration(BaseTestUtils):
 
 		# Verificar que los capítulos y lecciones se importaron
 		self.assertTrue(len(imported_course.chapters) > 0, "El curso importado no tiene capítulos asociados")
-		
+
 		imported_first_chapter = frappe.get_doc("Course Chapter", imported_course.chapters[0].chapter)
 		original_first_chapter = frappe.get_doc("Course Chapter", self.course.chapters[0].chapter)
 		self.assertEqual(imported_first_chapter.title, original_first_chapter.title)
 
 		self.assertTrue(len(imported_first_chapter.lessons) > 0, "El capítulo importado no tiene lecciones")
-		
+
 		imported_first_lesson = frappe.get_doc("Course Lesson", imported_first_chapter.lessons[0].lesson)
 		original_first_lesson = frappe.get_doc("Course Lesson", original_first_chapter.lessons[0].lesson)
 		self.assertEqual(imported_first_lesson.title, original_first_lesson.title)

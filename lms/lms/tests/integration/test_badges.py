@@ -1,6 +1,8 @@
 """
 Pruebas de integración para Módulo 11: Badges / Gamificación
 Casos: INT-013 (Badge de Primera Matrícula)
+       INT-014 (Badge al obtener Certificación)
+       INT-013-NEG (Badge no asignado sin matrícula) - Caso negativo
 """
 import os
 import unittest

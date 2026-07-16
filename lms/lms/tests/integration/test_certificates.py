@@ -1,6 +1,8 @@
 """
 Pruebas de integración para Módulo 8: Certificaciones
 Casos: INT-009 (Certificado automático al completar curso)
+       INT-010 (Solicitar certificado manual)
+       INT-009-NEG (Curso incompleto NO genera certificado) - Caso negativo
 """
 import os
 import unittest
