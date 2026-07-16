@@ -14,3 +14,4 @@ from .test_certificates import TestCertificateCompletion
 from .test_course_deletion import TestCourseDeletion
 from .test_evaluations import TestQuizValidation
 from .test_search import TestSearchIntegration
+from .test_cache_invalidation import TestCacheInvalidation
