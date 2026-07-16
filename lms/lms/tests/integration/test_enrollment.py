@@ -1,6 +1,7 @@
 """
 Pruebas de integración para Módulo 4: Matrículas y Progreso
 Casos: INT-006 (Completar lección crea progreso automático)
+       INT-023: Matricularse a curso ya completado
 """
 import os
 import unittest
@@ -184,5 +185,97 @@ class TestEnrollmentProgress(BaseTestUtils):
         print("\n" + "="*70)
         print("(n.n) INT-006: Prueba completada exitosamente")
         print("="*70)
+
+	# ======================================================================
+	# INT-023: Matricularse a curso ya completado
+	# ======================================================================
+
+    def test_int_023_enroll_in_completed_course(self):
+	    """
+	    INT-023: Verificar que no se pueda matricular en un curso ya completado
+	    o que se maneje correctamente la duplicación
+	    """
+	    print("\n" + "="*70)
+	    print(">  INT-023: Matricularse a curso ya completado")
+	    print("="*70)
+
+	    # --- 1. Crear curso con capítulos y lecciones ---
+	    print("\nPaso 1: Crear curso con capítulo y lección")
+	    # Reutilizar el curso creado en setUp (self.course_name, self.chapter_name, self.lesson_name)
+	    print(f"    Curso: {self.course_name}")
+	    print(f"    Lección: {self.lesson_name}")
+
+	    # --- 2. Crear matrícula inicial ---
+	    print("\nPaso 2: Crear matrícula inicial")
+	    enrollment = frappe.get_doc({
+	        "doctype": "LMS Enrollment",
+	        "member": self.student_email,
+	        "course": self.course_name
+	    })
+	    enrollment.flags.ignore_links = True
+	    enrollment.insert()
+	    frappe.db.commit()
+	    print(f"    Matrícula inicial creada: {enrollment.name}")
+
+	    # --- 3. Completar el curso al 100% ---
+	    print("\nPaso 3: Completar el curso al 100%")
+	    from lms.lms.doctype.course_lesson.course_lesson import save_progress
+
+	    frappe.set_user(self.student_email)
+
+	    # Completar la lección
+	    result = save_progress(self.lesson_name, self.course_name)
+	    frappe.db.commit()
+	    print(f"    Lección completada (resultado: {result})")
+
+	    # Verificar progreso 100%
+	    enrollment.reload()
+	    self.assertEqual(enrollment.progress, 100)
+	    print(f"    Progreso del curso: {enrollment.progress}%")
+
+	    # --- 4. Intentar matricular nuevamente (debe fallar) ---
+	    print("\nPaso 4: Intentar matricular nuevamente (debe fallar)")
+	    frappe.set_user(self.student_email)
+
+	    try:
+	        # Intentar crear una segunda matrícula
+	        enrollment2 = frappe.get_doc({
+	            "doctype": "LMS Enrollment",
+	            "member": self.student_email,
+	            "course": self.course_name
+	        })
+	        enrollment2.flags.ignore_links = True
+	        enrollment2.insert()
+	        frappe.db.commit()
+
+	        # Si llega aquí, la prueba falla (no debería permitir duplicado)
+	        self.fail("Se permitió crear una segunda matrícula en un curso ya completado")
+
+	    except Exception as e:
+	        error_msg = str(e).lower()
+	        print(f"    Error capturado correctamente: {str(e)[:150]}")
+
+	        # Verificar que el error menciona duplicado o completado
+	        # La validación está en validate_duplicate_enrollment()
+	        self.assertTrue(
+	            "already enrolled" in error_msg or "duplicate" in error_msg or "exists" in error_msg,
+	            f"El mensaje de error no menciona 'already enrolled'. Error: {error_msg}"
+	        )
+	        print("    [>] Error capturado correctamente (matrícula duplicada)")
+
+	    # --- 5. Verificar que solo existe una matrícula ---
+	    print("\nPaso 5: Verificar que solo existe una matrícula")
+	    frappe.set_user("Administrator")
+	    enrollments = frappe.get_all(
+	        "LMS Enrollment",
+	        {"member": self.student_email, "course": self.course_name}
+	    )
+	    self.assertEqual(len(enrollments), 1,
+	        f"Se encontraron {len(enrollments)} matrículas en lugar de 1")
+	    print(f"    [>] Solo existe 1 matrícula para el curso")
+
+	    print("\n" + "="*70)
+	    print("(n.n) INT-023: Prueba completada exitosamente")
+	    print("="*70)
 
 
