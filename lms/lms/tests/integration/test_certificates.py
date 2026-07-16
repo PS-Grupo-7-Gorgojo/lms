@@ -22,6 +22,8 @@ class TestCertificateCompletion(IntegrationTestCase):
         """Configuración antes de CADA prueba"""
         super().setUp()
         frappe.set_user("Administrator")
+        # frappe.db.delete("LMS Certificate Request")
+        # frappe.db.commit()
 
         # 1. Crear curso con certificación habilitada
         self.course_title = f"Curso Certificado {frappe.generate_hash(length=6)}"
@@ -469,7 +471,11 @@ class TestCertificateCompletion(IntegrationTestCase):
             "doctype": "LMS Certificate Request",
             "member": self.student_email,
             "course": self.course_name,
+<<<<<<< HEAD
             "date": frappe.utils.nowdate(),
+=======
+            "date": frappe.utils.add_days(frappe.utils.nowdate(), 1),
+>>>>>>> f5a200bd2b891e9ea243f765dbdcb8622daf8bd0
             "start_time": "10:00:00",
             "end_time": "11:00:00"
         })
