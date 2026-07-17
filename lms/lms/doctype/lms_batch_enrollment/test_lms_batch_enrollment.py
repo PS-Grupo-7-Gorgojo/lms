@@ -9,7 +9,7 @@ from lms.lms.doctype.lms_batch_enrollment.lms_batch_enrollment import send_confi
 
 
 class UnitTestLMSBatchEnrollment(UnitTestCase):
-	# UT-BENR-001
+	# UT-LMS-BATCHENR-001
 	def test_validate_owner_different_non_admin_throws(self):
 		"""Si el propietario es diferente del miembro y no es administrador, lanza ValidationError."""
 		# Crear el documento
@@ -24,7 +24,7 @@ class UnitTestLMSBatchEnrollment(UnitTestCase):
 			with self.assertRaises(frappe.ValidationError):
 				batch_enrollment.validate_owner()
 
-	# UT-BENR-002
+	# UT-LMS-BATCHENR-002
 	def test_paid_batch_no_payment_throws(self):
 		"""Si el lote es de pago, el usuario no es admin y no ha pagado, lanza ValidationError."""
 		# Crear el documento
@@ -42,7 +42,7 @@ class UnitTestLMSBatchEnrollment(UnitTestCase):
 			with self.assertRaises(frappe.ValidationError):
 				batch_enrollment.validate_payment()
 
-	# UT-BENR-003
+	# UT-LMS-BATCHENR-003
 	def test_paid_batch_payment_exists_passes(self):
 		"""Si el lote es de pago, el usuario no es admin y ya pagó, permite la inscripción y guarda el pago."""
 		# Crear el documento
@@ -60,7 +60,7 @@ class UnitTestLMSBatchEnrollment(UnitTestCase):
 			batch_enrollment.validate_payment()
 			self.assertEqual(batch_enrollment.payment, "PAY-0002")
 
-	# UT-BENR-004
+	# UT-LMS-BATCHENR-004
 	def test_validate_self_enrollment_restricted_non_admin_throws(self):
 		"""Si la autoinscripción está deshabilitada y el usuario no es admin, lanza ValidationError."""
 		# Crear el documento
@@ -77,7 +77,7 @@ class UnitTestLMSBatchEnrollment(UnitTestCase):
 			with self.assertRaises(frappe.ValidationError):
 				batch_enrollment.validate_self_enrollment()
 
-	# UT-BENR-005
+	# UT-LMS-BATCHENR-005
 	def test_validate_duplicate_members_throws(self):
 		"""Si el miembro ya está inscrito en el lote, lanza ValidationError."""
 		# Crear el documento
@@ -93,7 +93,7 @@ class UnitTestLMSBatchEnrollment(UnitTestCase):
 			with self.assertRaises(frappe.ValidationError):
 				batch_enrollment.validate_duplicate_members()
 
-	# UT-BENR-006
+	# UT-LMS-BATCHENR-006
 	def test_validate_seat_availability_exceeded_throws(self):
 		"""Si la cantidad de inscritos alcanza o supera el número de vacantes, lanza ValidationError."""
 		# Crear el documento
@@ -110,7 +110,7 @@ class UnitTestLMSBatchEnrollment(UnitTestCase):
 			with self.assertRaises(frappe.ValidationError):
 				batch_enrollment.validate_seat_availability()
 
-	# UT-BENR-007
+	# UT-LMS-BATCHENR-007
 	def test_validate_course_enrollment_creates_missing_enrollment(self):
 		"""Si el estudiante no está inscrito en los cursos del lote, crea las inscripciones automáticamente."""
 		# Crear el documento
@@ -136,7 +136,7 @@ class UnitTestLMSBatchEnrollment(UnitTestCase):
 			self.assertEqual(mock_enrollment.enrollment_from_batch, "batch-1")
 			mock_enrollment.save.assert_called_once()
 
-	# UT-BENR-008
+	# UT-LMS-BATCHENR-008
 	def test_send_confirmation_email_no_permission_throws(self):
 		"""Si el remitente no es el miembro inscrito ni administrador, lanza PermissionError."""
 		# Crear el documento
