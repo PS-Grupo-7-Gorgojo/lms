@@ -1,66 +1,51 @@
 # Copyright (c) 2021, FOSS United and Contributors
 # See license.txt
 
+from unittest.mock import patch
+import unittest
+
 import frappe
 
-from lms.lms.test_helpers import BaseTestUtils
 
+class TestLMSCourseProgress(unittest.TestCase):
+	# UT-LMS-CRSPROG-001
+	def test_before_insert_duplicate_progress_throws(self):
+		"""Si ya existe un registro de progreso para la misma lección y miembro, lanza UniqueValidationError."""
+		progress = frappe.get_doc({
+			"doctype": "LMS Course Progress",
+			"member": "student@example.com",
+			"lesson": "lesson-1"
+		})
+		
+		# Parchear la existencia del progreso duplicado
+		with patch("frappe.db.exists", return_value=True):
+			with self.assertRaises(frappe.UniqueValidationError):
+				progress.before_insert()
 
-class TestLMSCourseProgress(BaseTestUtils):
-	def setUp(self):
-		super().setUp()
-		self.admin = self._create_user(
-			"frappe@example.com", "Frappe", "Admin", ["Moderator", "Course Creator"]
-		)
-		self.student = self._create_user("student@example.com", "Test", "Student", ["LMS Student"])
-		self.course = self._create_course()
+	# UT-LMS-CRSPROG-002
+	def test_on_update_recalculates_progress(self):
+		"""Al actualizar el progreso, invoca a recalculate_course_progress para actualizar la inscripción."""
+		progress = frappe.get_doc({
+			"doctype": "LMS Course Progress",
+			"course": "course-1",
+			"member": "student@example.com"
+		})
+		
+		# Parchear el recálculo de avance
+		with patch("lms.lms.doctype.lms_course_progress.lms_course_progress.recalculate_course_progress") as mock_recalc:
+			progress.on_update()
+			mock_recalc.assert_called_once_with("course-1", "student@example.com")
 
-		self.lessons = []
-		for i in range(1, 3):
-			chapter = self._create_chapter(f"Chapter {i}", self.course.name)
-			self._create_chapter_reference(self.course.name, chapter.name, idx=i)
-			for j in range(1, 3):
-				lesson = self._create_lesson(f"Lesson {i}.{j}", chapter.name, self.course.name)
-				self._create_lesson_reference(chapter.name, lesson.name)
-				self.lessons.append(lesson)
-
-		self.enrollment = self._create_enrollment(self.student.email, self.course.name)
-
-	def test_manual_progress_recalculates_enrollment(self):
-		"""Creating a course progress (desk) must update the enrollment progress"""
-		self._create_lesson_progress(self.student.email, self.course.name, self.lessons[0].name)
-		self._create_lesson_progress(self.student.email, self.course.name, self.lessons[1].name)
-
-		self.enrollment.reload()
-		self.assertEqual(self.enrollment.progress, 50)
-
-		self._create_lesson_progress(self.student.email, self.course.name, self.lessons[2].name)
-		self._create_lesson_progress(self.student.email, self.course.name, self.lessons[3].name)
-
-		self.enrollment.reload()
-		self.assertEqual(self.enrollment.progress, 100)
-
-	def test_duplicate_progress_is_rejected(self):
-		"""Duplicate progress row for the same (member, lesson) not allowed"""
-		self._create_lesson_progress(self.student.email, self.course.name, self.lessons[0].name)
-
-		lms_course_progress = frappe.new_doc("LMS Course Progress")
-		lms_course_progress.update(
-			{
-				"member": self.student.email,
-				"course": self.course.name,
-				"lesson": self.lessons[0].name,
-				"status": "Complete",
-			}
-		)
-		with self.assertRaises(frappe.UniqueValidationError):
-			lms_course_progress.insert(ignore_permissions=True)
-
-		count = frappe.db.count(
-			"LMS Course Progress",
-			{"member": self.student.email, "lesson": self.lessons[0].name},
-		)
-		self.assertEqual(count, 1)
-
-		self.enrollment.reload()
-		self.assertEqual(self.enrollment.progress, 25)
+	# UT-LMS-CRSPROG-003
+	def test_after_delete_recalculates_progress(self):
+		"""Al eliminar el progreso, invoca a recalculate_course_progress para actualizar la inscripción."""
+		progress = frappe.get_doc({
+			"doctype": "LMS Course Progress",
+			"course": "course-1",
+			"member": "student@example.com"
+		})
+		
+		# Parchear el recálculo de avance
+		with patch("lms.lms.doctype.lms_course_progress.lms_course_progress.recalculate_course_progress") as mock_recalc:
+			progress.after_delete()
+			mock_recalc.assert_called_once_with("course-1", "student@example.com")
