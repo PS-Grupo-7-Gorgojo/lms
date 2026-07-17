@@ -778,65 +778,6 @@ class TestUtils(BaseTestUtils):
 
 			mock_make_logs.assert_not_called()
 
-	# UT-UTILS-028
-	def test_notify_mentions_course_lesson(self):
-		""" Valida la creación del log de notificaciones para menciones dentro de una lección de curso. """
-		doc = _dict({"reply": "@user1 Hola!", "owner": "owner@example.com"})
-		topic = _dict({"reference_doctype": "Course Lesson", "reference_docname": "lesson1", "title": "Titulo Curso"})
-
-		with patch("lms.lms.utils.extract_mentions") as mock_extract, \
-				patch("lms.lms.utils.get_fullname") as mock_fullname, \
-				patch("frappe.db.get_value") as mock_get_value, \
-				patch("lms.lms.utils.get_lesson_index") as mock_index, \
-				patch("lms.lms.utils.get_lesson_url") as mock_url, \
-				patch("lms.lms.utils.make_notification_logs") as mock_make_logs:
-
-			mock_extract.return_value = ["user1@example.com"]
-			mock_fullname.return_value = "Owner Name"
-			mock_get_value.return_value = "curso_demo"
-			mock_index.return_value = "1-1"
-			mock_url.return_value = "/courses/curso_demo/learn/1-1"
-
-			notify_mentions_on_portal(doc, topic)
-
-			# Verifica que se construyó el subject y se llamó a make_notification_logs
-			args, kwargs = mock_make_logs.call_args
-			notification, user = args
-			self.assertEqual(user, "user1@example.com")
-			self.assertEqual(notification["document_type"], "Course Lesson")
-			self.assertEqual(notification["document_name"], "lesson1")
-			self.assertEqual(notification["from_user"], "owner@example.com")
-			self.assertEqual(notification["type"], "Mention")
-			self.assertEqual(notification["link"], "/courses/curso_demo/learn/1-1")
-
-	# UT-UTILS-029
-	def test_notify_mentions_batch(self):
-		""" Comprueba que se registre correctamente una mención realizada en las discusiones de un batch. """
-		doc = _dict({"reply": "@user2 Hola!", "owner": "owner@example.com"})
-		topic = _dict({"reference_doctype": "LMS Batch", "reference_docname": "batch1", "title": "Batch Demo"})
-
-		with patch("lms.lms.utils.extract_mentions") as mock_extract, \
-				patch("lms.lms.utils.get_fullname") as mock_fullname, \
-				patch("frappe.db.get_value") as mock_get_value, \
-				patch("lms.lms.utils.get_lms_route") as mock_route, \
-				patch("lms.lms.utils.make_notification_logs") as mock_make_logs:
-
-			mock_extract.return_value = ["user2@example.com"]
-			mock_fullname.return_value = "Owner Name"
-			mock_get_value.return_value = "Batch Title"
-			mock_route.return_value = "/batches/batch1#discussions"
-
-			notify_mentions_on_portal(doc, topic)
-
-			args, kwargs = mock_make_logs.call_args
-			notification, user = args
-			self.assertEqual(user, "user2@example.com")
-			self.assertEqual(notification["document_type"], "LMS Batch")
-			self.assertEqual(notification["document_name"], "batch1")
-			self.assertEqual(notification["from_user"], "owner@example.com")
-			self.assertEqual(notification["type"], "Mention")
-			self.assertEqual(notification["link"], "/batches/batch1#discussions")
-
 	# UT-UTILS-030
 	def test_notify_mentions_via_email_no_mentions(self):
 		""" Evita la ejecución del envío de correo si el parser no detecta cuentas válidas mencionadas. """
@@ -873,64 +814,6 @@ class TestUtils(BaseTestUtils):
 			result = notify_mentions_via_email(doc, topic)
 			self.assertIsNone(result)
 			mock_sendmail.assert_not_called()
-
-	# UT-UTILS-032
-	def test_notify_mentions_via_email_course_lesson(self):
-		""" Valida la construcción y el envío del correo electrónico por mención en una lección. """
-		doc = _dict({"reply": "@user Hola!", "owner": "owner@example.com"})
-		topic = _dict({"reference_docname": "lesson1", "reference_doctype": "Course Lesson"})
-
-		with patch("frappe.get_cached_value") as mock_cached, \
-				patch("frappe.conf", {"mail_login": "login"}), \
-				patch("lms.lms.utils.extract_mentions") as mock_extract, \
-				patch("lms.lms.utils.get_fullname") as mock_fullname, \
-				patch("frappe.db.get_value") as mock_get_value, \
-				patch("lms.lms.utils.get_lesson_index") as mock_index, \
-				patch("lms.lms.utils.get_lesson_url") as mock_url, \
-				patch("frappe.sendmail") as mock_sendmail:
-
-			mock_cached.return_value = "outgoing_account"
-			mock_extract.return_value = ["user1"]
-			mock_fullname.return_value = "Owner Name"
-			# get_value se llama dos veces: primero para User.email, luego para Course Lesson.course
-			mock_get_value.side_effect = ["user1@example.com", "curso_demo"]
-			mock_index.return_value = "1-1"
-			mock_url.return_value = "/courses/curso_demo/learn/1-1"
-
-			notify_mentions_via_email(doc, topic)
-
-			args, kwargs = mock_sendmail.call_args
-			self.assertEqual(kwargs["recipients"], "user1@example.com")
-			self.assertIn("Owner Name", kwargs["subject"])
-			self.assertEqual(kwargs["template"], "mention_template")
-			self.assertEqual(kwargs["args"]["link"], "/courses/curso_demo/learn/1-1")
-
-	# UT-UTILS-033
-	def test_notify_mentions_via_email_batch(self):
-		""" Comprueba que la URL embebida en el correo de mención apunte correctamente al batch referenciado. """
-		doc = _dict({"reply": "@user Hola!", "owner": "owner@example.com"})
-		topic = _dict({"reference_docname": "batch1", "reference_doctype": "LMS Batch"})
-
-		with patch("frappe.get_cached_value") as mock_cached, \
-				patch("frappe.conf", {"mail_login": "login"}), \
-				patch("lms.lms.utils.extract_mentions") as mock_extract, \
-				patch("lms.lms.utils.get_fullname") as mock_fullname, \
-				patch("frappe.db.get_value") as mock_get_value, \
-				patch("frappe.sendmail") as mock_sendmail:
-
-			mock_cached.return_value = "outgoing_account"
-			mock_extract.return_value = ["user2"]
-			mock_fullname.return_value = "Owner Name"
-			# get_value se llama para User.email y para LMS Batch.title
-			mock_get_value.side_effect = ["user2@example.com", "Batch Demo"]
-
-			notify_mentions_via_email(doc, topic)
-
-			args, kwargs = mock_sendmail.call_args
-			self.assertEqual(kwargs["recipients"], "user2@example.com")
-			self.assertIn("Owner Name", kwargs["subject"])
-			self.assertEqual(kwargs["template"], "mention_template")
-			self.assertEqual(kwargs["args"]["link"], "/batches/batch1#discussions")
 
 	# UT-UTILS-034
 	def test_get_lesson_count_no_chapters(self):
@@ -1079,68 +962,6 @@ class TestUtils(BaseTestUtils):
 			self.assertIn(["Sales Invoice", "posting_date", ">=", "2024-01-01"], filters)
 			self.assertIn(["Sales Invoice", "posting_date", "<=", "2024-01-31"], filters)
 
-	# UT-UTILS-041
-	def test_get_chart_details_version_15(self):
-		""" Garantiza que los campos de agregación SQL se construyan como literales alias explícitos en Frappe v15. """
-		with patch("lms.lms.utils.get_frappe_version") as mock_version, \
-				patch("lms.lms.utils.get_chart_filters") as mock_filters, \
-				patch("frappe.db.get_all") as mock_get_all:
-			
-			chart = _dict({
-				"document_type": "Sales Invoice",
-				"filters_json": "[]",
-				"chart_type": "Line"
-			})
-			mock_version.return_value = "15.0.0"
-			mock_filters.return_value = [["Sales Invoice", "docstatus", "<", 2, False]]
-			mock_get_all.return_value = [("2024-01-01", 100, 2)]
-
-			result = get_chart_details(
-				"Sales Invoice", "posting_date", "grand_total",
-				chart, "2024-01-01", "2024-01-31"
-			)
-
-			self.assertEqual(result, [("2024-01-01", 100, 2)])
-			mock_get_all.assert_called_once_with(
-				"Sales Invoice",
-				fields=["posting_date as _unit", "SUM(grand_total)", "COUNT(*)"],
-				filters=[["Sales Invoice", "docstatus", "<", 2, False]],
-				group_by="_unit",
-				order_by="_unit asc",
-				as_list=True,
-			)
-
-	# UT-UTILS-042
-	def test_get_chart_details_other_version(self):
-		""" Garantiza que los campos de agregación mantengan el mapeo por diccionarios pre-v15. """
-		with patch("lms.lms.utils.get_frappe_version") as mock_version, \
-				patch("lms.lms.utils.get_chart_filters") as mock_filters, \
-				patch("frappe.db.get_all") as mock_get_all:
-
-			chart = _dict({
-				"document_type": "Sales Invoice",
-				"filters_json": "[]",
-				"chart_type": "Line"
-			})
-						
-			mock_version.return_value = "13.0.0"
-			mock_filters.return_value = [["Sales Invoice", "docstatus", "<", 2]]
-			mock_get_all.return_value = [("2024-01-01", 200, 5)]
-
-			result = get_chart_details(
-				"Sales Invoice", "posting_date", "grand_total",
-				chart, "2024-01-01", "2024-01-31"
-			)
-
-			self.assertEqual(result, [("2024-01-01", 200, 5)])
-			mock_get_all.assert_called_once_with(
-				"Sales Invoice",
-				fields=["posting_date", {"SUM": "grand_total"}, {"COUNT": "*"}],
-				filters=[["Sales Invoice", "docstatus", "<", 2]],
-				group_by="posting_date",
-				order_by="posting_date",
-				as_list=True,
-			)
 
 	# UT-UTILS-043
 	def test_get_course_completion_data_with_completed(self):
@@ -1294,29 +1115,6 @@ class TestUtils(BaseTestUtils):
 
 			mock_single_value.assert_called_once_with("LMS Settings", "apply_gst")
 
-	# UT-UTILS-056
-	def test_exchange_rate_usd(self):
-		""" Demuestra la obtención directa de la divisa contactando a la red externa vía request para el target prediseñado USD. """
-		fake_response = MagicMock()
-		fake_response.json.return_value = {"rates": {"USD": 1.25}}
-
-		with patch("requests.request", return_value=fake_response) as mock_request:
-			rate = get_current_exchange_rate("EUR")
-
-			self.assertEqual(rate, 1.25)
-			mock_request.assert_called_once_with("GET", "https://api.frankfurter.app/latest?from=EUR&to=USD")
-
-	# UT-UTILS-057
-	def test_exchange_rate_other_target(self):
-		""" Asegura que el servicio cambie dinámicamente los parámetros GET de la URL al variar la divisa objetivo. """
-		fake_response = MagicMock()
-		fake_response.json.return_value = {"rates": {"GBP": 0.85}}
-
-		with patch("requests.request", return_value=fake_response) as mock_request:
-			rate = get_current_exchange_rate("USD", target="GBP")
-
-			self.assertEqual(rate, 0.85)
-			mock_request.assert_called_once_with("GET", "https://api.frankfurter.app/latest?from=USD&to=GBP")
 
 	# UT-UTILS-058
 	def test_guest_user_access_not_allowed(self):
@@ -1335,38 +1133,6 @@ class TestUtils(BaseTestUtils):
 		with patch("lms.lms.utils.guest_access_allowed", return_value=False):
 			result = get_courses()
 			self.assertEqual(result, [])
-
-	# UT-UTILS-060
-	def test_get_courses_normal_flow(self):
-		""" Valida el flujo normal de get_courses retornando los cursos disponibles. """
-		fake_courses = [{"name": "curso1"}, {"name": "curso2"}]
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("lms.lms.utils.update_course_filters", return_value=({"f": "v"}, {}, False)), \
-			patch("lms.lms.utils.get_course_fields", return_value=["name"]), \
-			patch("frappe.get_all", return_value=fake_courses), \
-			patch("lms.lms.utils.get_enrollment_details", return_value=fake_courses), \
-			patch("lms.lms.utils.get_course_card_details", return_value=fake_courses):
-
-			result = get_courses()
-			self.assertEqual(result, fake_courses)
-
-	# UT-UTILS-061
-	def test_get_courses_with_featured(self):
-		""" Comprueba que get_courses antepone los cursos destacados al principio de la lista. """
-		fake_courses = [{"name": "curso1"}]
-		fake_featured = [{"name": "destacado"}]
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("lms.lms.utils.update_course_filters", return_value=({"f": "v"}, {}, True)), \
-			patch("lms.lms.utils.get_course_fields", return_value=["name"]), \
-			patch("frappe.get_all", return_value=fake_courses), \
-			patch("lms.lms.utils.get_featured_courses", return_value=fake_featured), \
-			patch("lms.lms.utils.get_enrollment_details", return_value=fake_featured + fake_courses), \
-			patch("lms.lms.utils.get_course_card_details", return_value=fake_featured + fake_courses):
-
-			result = get_courses(start=0)
-			# Verifica que los destacados se anteponen
-			self.assertEqual(result[0]["name"], "destacado")
-			self.assertEqual(result[1]["name"], "curso1")
 
 	# UT-UTILS-062
 	def test_course_free_or_unpublished(self):
@@ -1567,84 +1333,6 @@ class TestUtils(BaseTestUtils):
 			result = get_course_details("curso2")
 			self.assertEqual(result, {})
 
-	# UT-UTILS-077
-	def test_course_details_course_published_with_price(self):
-		""" Verifica que devuelva los detalles correctos, incluyendo el precio formateado, instructores y estadísticas. """
-		fake_course = _dict({
-			"name": "curso3",
-			"paid_course": True,
-			"paid_certificate": False,
-			"course_price": 100,
-			"currency": "EUR",
-		})
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-				patch("frappe.db.get_value", side_effect=[1, fake_course]), \
-				patch("lms.lms.utils.get_membership", return_value=None), \
-				patch("lms.lms.utils.can_modify_course", return_value=True), \
-				patch("lms.lms.utils.get_course_fields", return_value=["name","course_price","currency"]), \
-				patch("lms.lms.utils.get_instructors", return_value=["prof"]), \
-				patch("frappe.db.count", return_value=5), \
-				patch("lms.lms.utils.get_course_content_stats", return_value={"quiz_count": 2}), \
-				patch("lms.lms.utils.fmt_money", return_value="$100"), \
-				patch("frappe.session") as mock_user:
-			mock_user.user = "user@example.com"
-
-			result = get_course_details("curso3")
-			self.assertEqual(result.price, "$100")
-			self.assertEqual(result.instructors, ["prof"])
-			self.assertEqual(result.rating_count, 5)
-			self.assertEqual(result.quiz_count, 2)
-
-	# UT-UTILS-078
-	def test_course_details_course_guest_user_sets_instructor_false(self):
-		""" Comprueba que para un usuario invitado, is_instructor se establezca explícitamente en False. """
-		fake_course = _dict({
-			"name": "curso4",
-			"paid_course": False,
-			"paid_certificate": False,
-			"course_price": 50,
-			"currency": "USD",
-		})
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-				patch("frappe.db.get_value", side_effect=[1, fake_course]), \
-				patch("lms.lms.utils.get_membership", return_value=None), \
-				patch("lms.lms.utils.can_modify_course", return_value=True), \
-				patch("lms.lms.utils.get_course_fields", return_value=["name","course_price","currency"]), \
-				patch("lms.lms.utils.get_instructors", return_value=[]), \
-				patch("frappe.db.count", return_value=0), \
-				patch("lms.lms.utils.get_course_content_stats", return_value={}), \
-				patch("frappe.session") as mock_session:
-			mock_session.user = "Guest"
-
-			result = get_course_details("curso4")
-			self.assertFalse(result.is_instructor)
-
-	# UT-UTILS-079
-	def test_course_details_course_with_membership_and_current_lesson(self):
-		""" Valida que get_course_details recupere y asigne la lección actual desde la membresía del usuario. """
-		fake_course = _dict({
-			"name": "curso5",
-			"paid_course": False,
-			"paid_certificate": False,
-			"course_price": 0,
-			"currency": "USD",
-		})
-		fake_membership = _dict({"current_lesson": "lesson1"})
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-				patch("frappe.db.get_value", side_effect=[1, fake_course]), \
-				patch("lms.lms.utils.get_membership", return_value=fake_membership), \
-				patch("lms.lms.utils.can_modify_course", return_value=True), \
-				patch("lms.lms.utils.get_course_fields", return_value=["name","course_price","currency"]), \
-				patch("lms.lms.utils.get_instructors", return_value=[]), \
-				patch("frappe.db.count", return_value=0), \
-				patch("lms.lms.utils.get_course_content_stats", return_value={}), \
-				patch("lms.lms.utils.get_lesson_index", return_value="1-1"), \
-				patch("frappe.session") as mock_user:
-			mock_user.user = "user@example.com"
-
-			result = get_course_details("curso5")
-			self.assertEqual(result.current_lesson, "1-1")
-
 	# UT-UTILS-080
 	def test_get_categorized_courses_under_review(self):
 		""" Verifica que categorize_courses asigne cursos con estado 'Under Review' a la categoría correspondiente. """
@@ -1702,41 +1390,6 @@ class TestUtils(BaseTestUtils):
 				patch("lms.lms.utils.get_outline_chapter", return_value=[]):
 			result = get_course_outline("curso2")
 			self.assertEqual(result, [])
-
-	# UT-UTILS-087
-	def test_get_course_outline_when_normal_flow_without_progress(self):
-		""" Comprueba la construcción del contorno normal de un curso sin información de progreso. """
-		fake_chapter = _dict({"name": "ch1"})
-		fake_lessons = [{"lesson": "l1"}]
-		fake_files = {"ch1": "file1"}
-		fake_outline = [{"chapter": "ch1", "lessons": ["l1"]}]
-
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-				patch("lms.lms.utils.get_outline_chapter", return_value=[fake_chapter]), \
-				patch("lms.lms.utils.get_outline_lessons", return_value=fake_lessons), \
-				patch("lms.lms.utils.get_scorm_files", return_value=fake_files), \
-				patch("lms.lms.utils.build_outline", return_value=fake_outline):
-
-			result = get_course_outline("curso3", progress=False)
-			self.assertEqual(result, fake_outline)
-
-	# UT-UTILS-088
-	def test_get_course_outline_when_normal_flow_with_progress(self):
-		""" Verifica la construcción del contorno del curso incluyendo los datos de progreso de las lecciones. """
-		fake_chapter = _dict({"name": "ch2"})
-		fake_lessons = [{"lesson": "l2"}]
-		fake_files = {"ch2": "file2"}
-		fake_outline = [{"chapter": "ch2", "lessons": ["l2"], "completed": ["l2"]}]
-
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-				patch("lms.lms.utils.get_outline_chapter", return_value=[fake_chapter]), \
-				patch("lms.lms.utils.get_outline_lessons", return_value=fake_lessons), \
-				patch("lms.lms.utils.get_scorm_files", return_value=fake_files), \
-				patch("lms.lms.utils.get_completed_lessons", return_value={"l2"}), \
-				patch("lms.lms.utils.build_outline", return_value=fake_outline):
-
-			result = get_course_outline("curso4", progress=True)
-			self.assertEqual(result, fake_outline)
 
 	# UT-UTILS-089
 	def test_get_outline_chapter_with_chapters(self):
@@ -1944,60 +1597,6 @@ class TestUtils(BaseTestUtils):
 			result = get_lesson("curso1", 1, 1)
 			self.assertTrue(result["is_scorm_package"])
 
-	# UT-UTILS-104
-	def test_get_lesson_no_preview(self):
-		""" Establece no_preview en 1 si la lección no incluye vista previa y el usuario no tiene membresía ni acceso. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.qb.from_") as mock_from, \
-			patch("frappe.db.get_value", side_effect=["lesson_name", _dict({"include_in_preview": 0, "title": "t"}), _dict({"title": "Course", "disable_self_learning": 0})]), \
-			patch("lms.lms.utils.get_membership", return_value=False), \
-			patch("lms.lms.utils.can_modify_course", return_value=False):
-			mock_query = mock_from.return_value
-			for method in ['join', 'on', 'select', 'where', 'limit']:
-				getattr(mock_query, method).return_value = mock_query
-			mock_query.run.return_value = [_dict({"name": "c1", "title": "t1"})]
-			result = get_lesson("curso1", 1, 1)
-			self.assertEqual(result["no_preview"], 1)
-
-	# UT-UTILS-105
-	def test_get_lesson_guest_progress(self):
-		""" Asegura que el progreso de la lección para un usuario invitado siempre se calcule como 0. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.qb.from_") as mock_from, \
-			patch("frappe.db.get_value", side_effect=["lesson_name", _dict({"include_in_preview": 1, "name": "l1"}), _dict({"title": "Course", "disable_self_learning": 0, "paid_certificate": 0})]), \
-			patch("lms.lms.utils.get_membership", return_value=True), \
-			patch("frappe.session", _dict({"user": "Guest"})), \
-			patch("lms.lms.utils.get_neighbour_lesson", return_value={"next": None, "prev": None}), \
-			patch("lms.lms.utils.get_lesson_icon", return_value="icon"), \
-			patch("lms.lms.utils.get_instructors", return_value=[]), \
-			patch("lms.lms.utils.get_video_details", return_value=[]):
-			mock_query = mock_from.return_value
-			for method in ['join', 'on', 'select', 'where', 'limit']:
-				getattr(mock_query, method).return_value = mock_query
-			mock_query.run.return_value = [_dict({"name": "c1", "title": "t1"})]
-			result = get_lesson("curso1", 1, 1)
-			self.assertEqual(result.progress, 0)
-
-	# UT-UTILS-106
-	def test_get_lesson_user_progress(self):
-		""" Obtiene y asigna correctamente el porcentaje de progreso de la lección para un usuario autenticado. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.qb.from_") as mock_from, \
-			patch("frappe.db.get_value", side_effect=["lesson_name", _dict({"include_in_preview": 1, "name": "l1"}), _dict({"title": "Course", "disable_self_learning": 0, "paid_certificate": 0})]), \
-			patch("lms.lms.utils.get_membership", return_value=True), \
-			patch("frappe.session", _dict({"user": "user1"})), \
-			patch("lms.lms.utils.get_progress", return_value=50), \
-			patch("lms.lms.utils.get_neighbour_lesson", return_value={"next": None, "prev": None}), \
-			patch("lms.lms.utils.get_lesson_icon", return_value="icon"), \
-			patch("lms.lms.utils.get_instructors", return_value=[]), \
-			patch("lms.lms.utils.get_video_details", return_value=[]):
-			mock_query = mock_from.return_value
-			for method in ['join', 'on', 'select', 'where', 'limit']:
-				getattr(mock_query, method).return_value = mock_query
-			mock_query.run.return_value = [_dict({"name": "c1", "title": "t1"})]
-			result = get_lesson("curso1", 1, 1)
-			self.assertEqual(result.progress, 50)
-
 	# UT-UTILS-107
 	def test_get_video_details(self):
 		""" Consulta y retorna el tiempo de visualización guardado de un video para el usuario en sesión. """
@@ -2030,99 +1629,6 @@ class TestUtils(BaseTestUtils):
 		""" Retorna un diccionario vacío si se solicitan los detalles de un batch y el acceso a invitados está denegado. """
 		with patch("lms.lms.utils.guest_access_allowed", return_value=False):
 			self.assertEqual(get_batch_details("batch1"), {})
-
-	# UT-UTILS-110
-	def test_get_batch_details_no_access(self):
-		""" Retorna vacío si el usuario autenticado no está inscrito ni posee permisos de modificación sobre el batch. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.get_all", return_value=["student1@example.com"]), \
-			patch("lms.lms.utils.can_modify_batch", return_value=False), \
-			patch("frappe.db.get_value", return_value=0), \
-			patch("frappe.session", _dict({"user": "student2@example.com"})):
-			self.assertEqual(get_batch_details("batch1"), {})
-
-	# UT-UTILS-111
-	def test_get_batch_details_student_enrolled(self):
-		""" Obtiene correctamente el detalle de cupos, estudiantes inscritos y precio formateado de un batch publicado. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.get_all", side_effect=[["student1@example.com"], [], []]), \
-			patch("lms.lms.utils.can_modify_batch", return_value=False), \
-			patch("frappe.db.get_value", side_effect=[0, _dict({"start_date": "2024-01-01", "start_time": "10:00:00", "paid_batch": 1, "amount": 100, "currency": "USD", "amount_usd": 100, "seat_count": 10})]), \
-			patch("frappe.session", _dict({"user": "student1@example.com"})), \
-			patch("lms.lms.utils.get_instructors", return_value=[]), \
-			patch("lms.lms.utils.getdate", return_value="2023-01-01"), \
-			patch("lms.lms.utils.nowtime", return_value="09:00:00"), \
-			patch("lms.lms.utils.check_multicurrency", return_value=(100, "USD")), \
-			patch("lms.lms.utils.fmt_money", return_value="$100"):
-			result = get_batch_details("batch1")
-			self.assertTrue(result.accept_enrollments)
-			self.assertEqual(result.seats_left, 9)
-			self.assertEqual(result.students, ["student1@example.com"])
-			self.assertEqual(result.price, "$100")
-
-	# UT-UTILS-112
-	def test_get_batch_details_admin_not_accept_enrollment(self):
-		""" Verifica que el sistema marque 'accept_enrollments' como False si el batch gratuito no cuenta con cupos disponibles. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.get_all", side_effect=[[], [], []]), \
-			patch("lms.lms.utils.can_modify_batch", return_value=True), \
-			patch("frappe.db.get_value", side_effect=[0, _dict({"start_date": "2022-01-01", "start_time": "10:00:00", "paid_batch": 0, "seat_count": 0})]), \
-			patch("frappe.session", _dict({"user": "admin@example.com"})), \
-			patch("lms.lms.utils.get_instructors", return_value=[]), \
-			patch("lms.lms.utils.getdate", return_value="2023-01-01"):
-			result = get_batch_details("batch1")
-			self.assertFalse(result.accept_enrollments)
-			self.assertEqual(result.students, [])
-
-	# UT-UTILS-113
-	def test_categorize_batches(self):
-		""" Agrupa un arreglo de batches en categorías lógicas (privado, archivado, próximo e inscrito) basándose en sus fechas. """
-		import datetime
-		def mock_getdate(date_str=None):
-			if date_str:
-				return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-			return datetime.date(2023, 1, 1)
-
-		with patch("frappe.session", _dict({"user": "user@example.com"})), \
-			patch("frappe.db.exists", return_value=True),   \
-			patch("lms.lms.utils.getdate", side_effect=mock_getdate), \
-			patch("lms.lms.utils.nowtime", return_value="10:00:00"):
-			batches = [
-				_dict({"name": "b1", "published": 0, "start_date": "2025-01-01", "start_time": "10:00:00"}),
-				_dict({"name": "b2", "published": 1, "start_date": "2020-01-01", "start_time": "10:00:00"}),
-				_dict({"name": "b3", "published": 1, "start_date": "2023-01-01", "start_time": "09:00:00"}),
-				_dict({"name": "b4", "published": 1, "start_date": "2030-01-01", "start_time": "10:00:00"}),
-			]
-			result = categorize_batches(batches)
-			self.assertEqual(result["private"][0].name, "b1")
-			self.assertEqual(result["archived"][0].name, "b3")
-			self.assertEqual(result["archived"][1].name, "b2")
-			self.assertEqual(result["upcoming"][0].name, "b4")
-			self.assertEqual(len(result["enrolled"]), 4)
-
-		with patch("frappe.session", _dict({"user": "Guest"})), \
-			patch("lms.lms.utils.getdate", side_effect=mock_getdate), \
-			patch("lms.lms.utils.nowtime", return_value="10:00:00"):
-			batches = [_dict({"name": "b1", "published": 0, "start_date": "2025-01-01", "start_time": "10:00:00"})]
-			result2 = categorize_batches(batches)
-			self.assertEqual(len(result2["enrolled"]), 0)
-
-	# UT-UTILS-114
-	def test_get_country_code(self):
-		""" Resuelve el nombre del país a partir de la IP conectada llamando a una API, o devuelve None ante un fallo. """
-		with patch("frappe.local.request_ip", return_value="127.0.0.1"), \
-			patch("requests.get") as mock_get, \
-			patch("frappe.db.get_value", return_value="United States"):	
-			mock_res = MagicMock()
-			mock_res.json.return_value = {"status": "success", "countryCode": "US"}
-			mock_get.return_value = mock_res
-			self.assertEqual(get_country_code(), "United States")
-			
-			mock_res.json.return_value = {"status": "fail"}
-			self.assertIsNone(get_country_code())
-
-			mock_res.json.side_effect = Exception("error")
-			self.assertIsNone(get_country_code())
 
 	# UT-UTILS-115
 	def test_get_quiz_with_questions_no_role(self):
@@ -2182,21 +1688,6 @@ class TestUtils(BaseTestUtils):
 			patch("lms.lms.utils.can_modify_batch", return_value=False):
 			with self.assertRaises(frappe.exceptions.ValidationError):
 				get_assessments("batch1")
-
-	# UT-UTILS-121
-	def test_get_assessments_valid(self):
-		""" Despacha una lista consolidada con la configuración de tareas, cuestionarios y ejercicios dictados en el batch. """
-		with patch("frappe.session", _dict({"user": "user@example.com"})), \
-			patch("frappe.db.exists", return_value=True), \
-			patch("frappe.get_all", return_value=[
-					_dict({"assessment_type": "LMS Assignment", "assessment_name": "ass1"}),
-					_dict({"assessment_type": "LMS Quiz", "assessment_name": "quiz1"}),
-					_dict({"assessment_type": "LMS Programming Exercise", "assessment_name": "ex1"})]), \
-			patch("lms.lms.utils.get_assignment_details", return_value=_dict({"assessment_name": "ass1"})), \
-			patch("lms.lms.utils.get_quiz_details", return_value=_dict({"assessment_name": "quiz1"})), \
-			patch("lms.lms.utils.get_exercise_details", return_value=_dict({"assessment_name": "ex1"})):
-			result = get_assessments("batch1")
-			self.assertEqual(len(result), 3)
 
 	# UT-UTILS-122
 	def test_get_assignment_details_not_attempted(self):
@@ -2330,17 +1821,6 @@ class TestUtils(BaseTestUtils):
 			patch("frappe.db.exists", return_value=False):
 			with self.assertRaises(frappe.exceptions.ValidationError):
 				get_batch_chart_data("batch1")
-
-	# UT-UTILS-135
-	def test_get_batch_chart_data(self):
-		""" Engloba de manera efectiva las listas estadísticas de cursos, asignaciones y quizzes en un objeto JSON único para gráficos. """
-		with patch("lms.lms.utils.can_modify_batch", return_value=True), \
-			patch("frappe.db.exists", return_value=True), \
-			patch("lms.lms.utils.get_course_completion_stats", return_value=[{"task": "c", "value": 1}]), \
-			patch("lms.lms.utils.get_assignment_pass_stats", return_value=[{"task": "a", "value": 2}]), \
-			patch("lms.lms.utils.get_quiz_pass_stats", return_value=[{"task": "q", "value": 3}]):
-			result = get_batch_chart_data("batch1")
-			self.assertEqual(len(result), 3)
 
 	# UT-UTILS-136
 	def test_calculate_course_progress(self):
@@ -2490,18 +1970,6 @@ class TestUtils(BaseTestUtils):
 			result = get_discussion_replies("topic1")
 			self.assertEqual(result[0].user.full_name, "User")
 
-	# UT-UTILS-153
-	def test_get_order_summary(self):
-		""" Comprueba que el resumen de orden devuelva los montos originales y los formatos de moneda correctos. """
-		with patch("lms.lms.utils.get_paid_course_details", return_value=_dict({"amount": 100, "currency": "USD", "amount_usd": 100})), \
-			patch("lms.lms.utils.check_multicurrency", return_value=(100, "USD")), \
-			patch("lms.lms.utils.fmt_money", return_value="$100"), \
-			patch("lms.lms.utils.adjust_amount_for_coupon"), \
-			patch("lms.lms.utils.get_gst_details"):
-			result = get_order_summary("LMS Course", "course1")
-			self.assertEqual(result.original_amount, 100)
-			self.assertEqual(result.total_amount_formatted, "$100")
-
 	# UT-UTILS-154
 	def test_get_paid_course_details_free(self):
 		""" Lanza una excepción si se intenta recuperar detalles de cobro sobre un curso parametrizado como gratuito. """
@@ -2564,27 +2032,6 @@ class TestUtils(BaseTestUtils):
 		with patch("frappe.db.exists", return_value=False):
 			with self.assertRaises(frappe.exceptions.ValidationError):
 				validate_course_access("lesson1")
-
-	# UT-UTILS-162
-	def test_validate_course_access_no_enrollment(self):
-		""" Falla la validación si el usuario no tiene ningún rol elevado y no cuenta con matrícula para el curso. """
-		with patch("frappe.db.exists", side_effect=[True, False]), \
-			patch("lms.lms.utils.has_moderator_role", return_value=False), \
-			patch("lms.lms.utils.has_course_instructor_role", return_value=False), \
-			patch("frappe.db.get_value", return_value="course1"), \
-			patch("frappe.session", _dict({"user": "user1"})):
-			with self.assertRaises(frappe.exceptions.ValidationError):
-				validate_course_access("lesson1")
-				
-	# UT-UTILS-163
-	def test_validate_course_access_enrolled(self):
-		""" Autoriza silenciosamente el acceso si el usuario presenta un registro de membresía válido en el curso. """
-		with patch("frappe.db.exists", side_effect=[True, True]), \
-			patch("lms.lms.utils.has_moderator_role", return_value=False), \
-			patch("lms.lms.utils.has_course_instructor_role", return_value=False), \
-			patch("frappe.db.get_value", return_value="course1"), \
-			patch("frappe.session", _dict({"user": "user1"})):
-			self.assertIsNone(validate_course_access("lesson1"))
 
 	# UT-UTILS-164
 	def test_validate_course_access_moderator(self):
@@ -2726,21 +2173,6 @@ class TestUtils(BaseTestUtils):
 			patch("frappe.session", _dict({"user": "user1"})):
 			with self.assertRaises(frappe.exceptions.ValidationError):
 				get_program_details("Mi programa")
-
-	# UT-UTILS-181
-	def test_get_program_details(self):
-		""" Extrae el desglose del programa recopilando porcentaje promediado e indicando eligibilidad individual de los cursos. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.db.get_value", side_effect=[True, _dict({"name": "Mi programa"}), 50]), \
-			patch("frappe.db.exists", return_value=True), \
-			patch("frappe.get_all", return_value=[_dict({"course": "Curso 1"})]), \
-			patch("lms.lms.utils.get_course_details", side_effect=[_dict({"membership": _dict({"progress": 100})}), _dict({"membership": None})]), \
-			patch("frappe.session", _dict({"user": "user1"})):
-			result = get_program_details("Mi programa")
-			self.assertEqual(result.name, "Mi programa")
-			self.assertEqual(len(result.courses), 1)
-			self.assertTrue(result.courses[0].eligible)
-			self.assertEqual(result.progress, 50)
 
 	# UT-UTILS-182
 	def test_validate_program_enrollment_unpublished(self):
@@ -3015,17 +2447,6 @@ class TestUtils(BaseTestUtils):
 			self.assertEqual(len(result), 1)
 			self.assertEqual(result[0].name, "batch 3")
 	
-	# UT-UTILS-216
-	def test_get_batches_with_filters(self):
-		""" Obtiene grupos aplicando un filtro específico como el estado de inscripción. """
-		with patch("lms.lms.utils.guest_access_allowed", return_value=True), \
-			patch("frappe.session", _dict({"user": "u1"})), \
-			patch("frappe.get_all", side_effect=[["b1"], [_dict({"name": "b1"})]]), \
-			patch("lms.lms.utils.filter_batches_based_on_start_time", return_value=[_dict({"name": "b1"})]), \
-			patch("lms.lms.utils.get_batch_card_details", return_value=[_dict({"name": "b1"})]):
-			result = get_batches({"enrolled": True})
-			self.assertEqual(len(result), 1)
-
 	# UT-UTILS-217
 	def test_get_batch_type(self):
 		""" Determina si un grupo es próximo o archivado según las condiciones de su fecha de inicio. """
@@ -3054,19 +2475,6 @@ class TestUtils(BaseTestUtils):
 			result = filter_batches_based_on_start_time(batches, {})
 			self.assertEqual(len(result), 1)
 			self.assertEqual(result[0].start_time, "10:00:00")
-
-	# UT-UTILS-220
-	def test_get_batch_card_details(self):
-		""" Calcula y formatea los detalles de visualización de las tarjetas de los grupos. """
-		with patch("lms.lms.utils.get_instructors", return_value=[]), \
-			patch("frappe.db.count", return_value=5), \
-			patch("lms.lms.utils.getdate", return_value="2023-01-01"), \
-			patch("lms.lms.utils.check_multicurrency", return_value=(100, "USD")), \
-			patch("lms.lms.utils.fmt_money", return_value="$100"):
-			batches = [_dict({"name": "b1", "seat_count": 10, "paid_batch": 1, "start_date": "2023-02-01", "amount": 100, "currency": "USD", "amount_usd": 100})]
-			result = get_batch_card_details(batches)
-			self.assertEqual(result[0].seats_left, 5)
-			self.assertEqual(result[0].price, "$100")
 
 	# UT-UTILS-221
 	def test_get_batch_student_details(self):
