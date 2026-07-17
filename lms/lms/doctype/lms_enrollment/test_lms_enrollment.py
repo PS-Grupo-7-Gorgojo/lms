@@ -8,7 +8,7 @@ import frappe
 
 
 class TestLMSEnrollment(BaseTestUtils):
-	# UT-ENR-001
+	# UT-LMS-ENR-001
 	def test_validate_duplicate_enrollment_throws(self):
 		"""Si ya existe una inscripción para el mismo curso y miembro, lanza ValidationError."""
 		# crea el documento
@@ -24,7 +24,7 @@ class TestLMSEnrollment(BaseTestUtils):
 			with self.assertRaises(frappe.ValidationError):
 				enrollment.validate_duplicate_enrollment()
 
-	# UT-ENR-002
+	# UT-LMS-ENR-002
 	def test_disable_self_learning_non_admin_throws(self):
 		"""Si el aprendizaje autodidacta está deshabilitado y el usuario no es administrador, lanza ValidationError."""
 		# crea el documento
@@ -48,7 +48,7 @@ class TestLMSEnrollment(BaseTestUtils):
 			with self.assertRaises(frappe.ValidationError):
 				enrollment.validate_course_enrollment_eligibility()
 
-	# UT-ENR-003
+	# UT-LMS-ENR-003
 	def test_enrollment_from_batch_not_associated_throws(self):
 		"""Si se intenta inscribir desde un lote que no está asociado con el curso, lanza ValidationError."""
 		# crea el documento
@@ -73,7 +73,7 @@ class TestLMSEnrollment(BaseTestUtils):
 			with self.assertRaises(frappe.ValidationError):
 				enrollment.validate_course_enrollment_eligibility()
 
-	# UT-ENR-004
+	# UT-LMS-ENR-004
 	def test_unpublished_course_non_admin_throws(self):
 		"""Si el curso no está publicado y el usuario no es administrador, lanza ValidationError."""
 		# crea el documento
@@ -97,7 +97,7 @@ class TestLMSEnrollment(BaseTestUtils):
 			with self.assertRaises(frappe.ValidationError):
 				enrollment.validate_course_enrollment_eligibility()
 
-	# UT-ENR-005
+	# UT-LMS-ENR-005
 	def test_paid_course_non_admin_no_payment_throws(self):
 		"""Si el curso es de pago, el usuario no es administrador y no ha realizado el pago, lanza ValidationError."""
 		# crea el documento
@@ -122,7 +122,7 @@ class TestLMSEnrollment(BaseTestUtils):
 			with self.assertRaises(frappe.ValidationError):
 				enrollment.validate_course_enrollment_eligibility()
 
-	# UT-ENR-006
+	# UT-LMS-ENR-006
 	def test_paid_course_non_admin_payment_exists_passes(self):
 		"""Si el curso es de pago, el usuario no es administrador y ya ha realizado el pago, permite la inscripción."""
 		# crea el documento
@@ -147,7 +147,7 @@ class TestLMSEnrollment(BaseTestUtils):
 			# Debería ejecutarse sin lanzar ningún error
 			enrollment.validate_course_enrollment_eligibility()
 
-	# UT-ENR-007
+	# UT-LMS-ENR-007
 	def test_update_program_progress(self):
 		"""Verifica que update_program_progress calcule correctamente el progreso redondeando hacia arriba y actualice el valor."""
 		from lms.lms.doctype.lms_enrollment.lms_enrollment import update_program_progress
