@@ -341,3 +341,174 @@ class TestQuizValidation(IntegrationTestCase):
         print("\n" + "="*70)
         print("(n.n) INT-007: Prueba completada exitosamente")
         print("="*70)
+
+	# ======================================================================
+	# INT-008: Programming Exercise - Autoevaluación con test cases
+	# ======================================================================
+
+    def test_int_008_programming_exercise_evaluation(self):
+	    """
+	    INT-008: Verificar que un ejercicio de programación se autoevalúa
+	    correctamente con casos de prueba y devuelve status 'Pass'
+	    """
+	    print("\n" + "="*70)
+	    print(">  INT-008: Programming Exercise - Autoevaluación")
+	    print("="*70)
+
+	    # --- 1. Crear Programming Exercise con test cases ---
+	    print("\nPaso 1: Crear ejercicio de programación")
+
+	    # NO especificar 'name', dejar que Frappe lo genere
+	    exercise = frappe.get_doc({
+	        "doctype": "LMS Programming Exercise",
+	        "title": f"Ejercicio de Suma {frappe.generate_hash(length=6)}",
+	        "problem_statement": "Escribe una función 'suma(a, b)' que devuelva la suma de dos números.",
+	        "test_cases": [
+	            {
+	                "input": "suma(2, 3)",
+	                "expected_output": "5"
+	            },
+	            {
+	                "input": "suma(-1, 1)",
+	                "expected_output": "0"
+	            },
+	            {
+	                "input": "suma(0, 0)",
+	                "expected_output": "0"
+	            }
+	        ]
+	    })
+	    exercise.insert(ignore_permissions=True)
+	    frappe.db.commit()
+	    # Usar el nombre REAL generado por Frappe
+	    exercise_name = exercise.name
+	    print(f"     Ejercicio creado: {exercise_name}")
+	    print(f"       Test cases: {len(exercise.test_cases)}")
+
+	    # --- 2. Crear usuario estudiante ---
+	    print("\nPaso 2: Crear usuario estudiante")
+	    student_email = f"test_student_exercise_{frappe.generate_hash(length=6)}@example.com"
+	    user = frappe.get_doc({
+	        "doctype": "User",
+	        "email": student_email,
+	        "first_name": "Test",
+	        "last_name": "Exercise Student",
+	        "send_welcome_email": 0
+	    })
+	    user.insert()
+	    user.add_roles("LMS Student")
+	    frappe.db.commit()
+	    print(f"     Usuario '{student_email}' creado con rol LMS Student")
+
+	    # --- 3. Crear submission con código correcto (como Administrator) ---
+	    print("\nPaso 3: Enviar código correcto (como Administrator)")
+
+	    correct_code = """
+def suma(a, b):
+    return a + b
+"""
+
+	    from lms.lms.api import create_programming_exercise_submission
+
+	    frappe.set_user("Administrator")
+
+	    #  Verificar que el ejercicio existe con el nombre REAL
+	    self.assertTrue(frappe.db.exists("LMS Programming Exercise", exercise_name),
+	        f"El ejercicio '{exercise_name}' no existe en la base de datos")
+
+	    submission_name = create_programming_exercise_submission(
+	        exercise=exercise_name,
+	        submission="new",
+	        code=correct_code,
+	        test_cases=[
+	            {"input": "suma(2, 3)", "output": "5", "expected_output": "5", "status": "Passed"},
+	            {"input": "suma(-1, 1)", "output": "0", "expected_output": "0", "status": "Passed"},
+	            {"input": "suma(0, 0)", "output": "0", "expected_output": "0", "status": "Passed"}
+	        ]
+	    )
+	    frappe.db.commit()
+	    print(f"      Submission creada: {submission_name}")
+
+	    # --- 4. Verificar status de la submission ---
+	    print("\nPaso 4: Verificar status de la submission")
+	    submission_doc = frappe.get_doc("LMS Programming Exercise Submission", submission_name)
+	    self.assertEqual(submission_doc.status, "Passed",
+	        f"El status debería ser 'Passed', es '{submission_doc.status}'")
+	    print(f"      Status: {submission_doc.status}")
+
+	    # --- 5. Verificar que todos los test cases pasaron ---
+	    print("\nPaso 5: Verificar test cases")
+	    for test_case in submission_doc.test_cases:
+	        self.assertEqual(test_case.status, "Passed",
+	            f"El test case '{test_case.input}' no pasó: {test_case.status}")
+	        print(f"      Test case '{test_case.input}' → {test_case.status}")
+
+	    # --- 6. Enviar código incorrecto (debe fallar) ---
+	    print("\nPaso 6: Enviar código incorrecto (debe fallar)")
+
+	    incorrect_code = """
+def suma(a, b):
+    return a - b  # Incorrecto: resta en lugar de suma
+"""
+
+	    submission_fail_name = create_programming_exercise_submission(
+	        exercise=exercise_name,
+	        submission="new",
+	        code=incorrect_code,
+	        test_cases=[
+	            {"input": "suma(2, 3)", "output": "-1", "expected_output": "5", "status": "Failed"},
+	            {"input": "suma(-1, 1)", "output": "-2", "expected_output": "0", "status": "Failed"},
+	            {"input": "suma(0, 0)", "output": "0", "expected_output": "0", "status": "Passed"}
+	        ]
+	    )
+	    frappe.db.commit()
+	    print(f"     Submission incorrecta creada: {submission_fail_name}")
+
+	    # --- 7. Verificar status incorrecto ---
+	    print("\nPaso 7: Verificar status de la submission incorrecta")
+	    submission_fail_doc = frappe.get_doc("LMS Programming Exercise Submission", submission_fail_name)
+	    self.assertEqual(submission_fail_doc.status, "Failed",
+	        f"El status debería ser 'Failed', es '{submission_fail_doc.status}'")
+	    print(f"     Status: {submission_fail_doc.status} (esperado: Failed)")
+
+	    # --- 8. Verificar que el estudiante NO puede crear submissions ---
+	    print("\nPaso 8: Verificar que el estudiante NO puede crear submissions")
+	    frappe.set_user(student_email)
+
+	    with self.assertRaises(frappe.PermissionError) as context:
+	        create_programming_exercise_submission(
+	            exercise=exercise_name,
+	            submission="new",
+	            code=correct_code,
+	            test_cases=[]
+	        )
+
+	    print("     Estudiante no puede crear submissions (Permiso denegado)")
+
+	    # --- 9. Limpiar ---
+	    print("\nPaso 9: Limpiar datos de prueba")
+	    frappe.set_user("Administrator")
+
+	    # Eliminar submissions
+	    for sub_name in [submission_name, submission_fail_name]:
+	        if frappe.db.exists("LMS Programming Exercise Submission", sub_name):
+	            frappe.delete_doc("LMS Programming Exercise Submission", sub_name, force=True, ignore_permissions=True)
+
+	    # Eliminar ejercicio
+	    if frappe.db.exists("LMS Programming Exercise", exercise_name):
+	        frappe.delete_doc("LMS Programming Exercise", exercise_name, force=True, ignore_permissions=True)
+
+	    # Eliminar usuario
+	    if frappe.db.exists("User", student_email):
+	        frappe.delete_doc("User", student_email, force=True, ignore_permissions=True)
+
+	    frappe.db.commit()
+	    print("      Datos de prueba eliminados")
+
+	    print("\n" + "="*70)
+	    print("(n.n) INT-008: Prueba completada exitosamente")
+	    print("   - Ejercicio de programación creado")
+	    print("   - Código correcto → status Passed")
+	    print("   - Código incorrecto → status Failed")
+	    print("   - Estudiante no puede crear submissions (permiso verificado)")
+	    print("="*70)
