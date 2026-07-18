@@ -322,3 +322,50 @@ def _create_stress_students(count):
         created.append(email)
 
     return created
+
+
+REDIS_STUDENT_COUNT = 40
+
+
+def seed_redis_queue_data(course_count=4, student_count=None):
+    """Create data for Redis/RQ saturation: courses with lessons, quizzes, certs enabled."""
+    if student_count is None:
+        student_count = REDIS_STUDENT_COUNT
+
+    students = _create_stress_students(student_count)
+    _ensure_instructor()
+
+    titles = []
+    for i in range(course_count):
+        title = f"Redis Stress Course {i + 1}"
+        if frappe.db.exists("LMS Course", {"title": title}):
+            titles.append(title)
+            continue
+
+        course = frappe.new_doc("LMS Course")
+        course.update({
+            "title": title,
+            "short_introduction": f"Redis stress course #{i + 1}",
+            "description": "Auto-generated for Redis/RQ saturation testing.",
+            "published": 1,
+            "upcoming": 0,
+            "disable_self_enrollment": 0,
+            "enable_certification": 1,
+            "instructors": [{"instructor": "stress_instructor@test.com"}],
+        })
+        course.save(ignore_permissions=True)
+
+        chapter = _create_chapter(title, course.name)
+        lesson = _create_lesson(f"Lesson 1 - {title}", chapter.name, course.name)
+        _QUIZ_QUESTIONS_CACHE[_create_quiz(f"RQ Quiz - {title}", lesson.name, course.name)] = []
+
+        for student in students[:student_count]:
+            if not frappe.db.exists("LMS Enrollment", {"member": student, "course": course.name}):
+                enrollment = frappe.new_doc("LMS Enrollment")
+                enrollment.update({"member": student, "course": course.name, "progress": 100})
+                enrollment.save(ignore_permissions=True)
+
+        titles.append(title)
+
+    frappe.db.commit()
+    return {"courses": titles, "students": students, "password": USER_PASSWORD}

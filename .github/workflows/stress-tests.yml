@@ -131,6 +131,8 @@ jobs:
             bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_certificate_data
           elif [ "$SCENARIO" = "quiz_submission" ]; then
             bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_quiz_data
+          elif [ "$SCENARIO" = "redis_queue" ]; then
+            bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_redis_queue_data
           else
             bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_enrollment_data
           fi

@@ -15,7 +15,7 @@ Scenarios:
     - certificate      : Solicitudes masivas de certificados
     - quiz_submission  : Entregas simultáneas de quizzes
     - course_access    : Acceso concurrente a cursos y evaluaciones
-    - redis_queue      : Saturación de colas Redis/RQ (TODO)
+    - redis_queue      : Saturación de colas Redis/RQ
 """
 
 import os
@@ -25,12 +25,14 @@ from tests.stress.scenarios.enrollment import EnrollmentStressUser
 from tests.stress.scenarios.certificate import CertificateStressUser
 from tests.stress.scenarios.quiz_submission import QuizSubmissionStressUser
 from tests.stress.scenarios.course_access import CourseAccessStressUser
+from tests.stress.scenarios.redis_queue import RedisQueueStressUser
 
 _SCENARIO_MAP = {
     "enrollment": EnrollmentStressUser,
     "certificate": CertificateStressUser,
     "quiz_submission": QuizSubmissionStressUser,
     "course_access": CourseAccessStressUser,
+    "redis_queue": RedisQueueStressUser,
 }
 
 user_classes = list(_SCENARIO_MAP.values())
