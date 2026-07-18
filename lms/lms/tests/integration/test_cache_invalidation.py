@@ -1,6 +1,6 @@
 """
-Pruebas de integración para Búsqueda
-Casos: INT-026: Cache e invalidación (Redis + MariaDB)
+Pruebas de integración para Módulo 13: Caché e Invalidación
+Casos: INT-026 (Course + Redis cache - Invalidación de caché al actualizar curso)
 """
 import os
 import unittest

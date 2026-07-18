@@ -1,3 +1,8 @@
+"""
+Pruebas de integración para Módulo 6-7: Batches y Clases en Vivo
+Casos: INT-020 (Eliminar batch con clases en vivo programadas)
+"""
+
 import os
 import unittest
 from unittest.mock import patch
@@ -9,11 +14,6 @@ from lms.lms.test_helpers import BaseTestUtils
 
 @unittest.skipUnless(os.environ.get("RUN_INTEGRATION_TESTS"), "Skipping integration tests")
 class TestBatchIntegration(BaseTestUtils):
-	"""
-	Clase para pruebas de integración de LMS Batch.
-	Cubre el caso:
-	- INT-020: Comportamiento al eliminar un lote (LMS Batch) con clases en vivo e inscripciones.
-	"""
 
 	def setUp(self):
 		super().setUp()

@@ -1,6 +1,7 @@
 """
-Pruebas de integración para Búsqueda
-Casos: INT-017 y INT-018
+Pruebas de integración para Módulo 13: Búsqueda y SQLite Index
+Casos: INT-017 (Course + MariaDB Index - Actualizar curso → índice actualizado)
+       INT-018 (MariaDB Index + Migración - Índice se reconstruye tras migración)
 """
 import os
 import unittest
