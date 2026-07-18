@@ -187,6 +187,121 @@ def _complete_enrollments(courses, students):
             enrollment.save(ignore_permissions=True)
 
 
+QUIZ_COURSE_COUNT = 3
+QUIZ_STUDENT_COUNT = 30
+QUESTIONS_PER_QUIZ = 5
+
+_QUIZ_QUESTIONS_CACHE = {}
+
+
+def seed_quiz_data(course_count=None, student_count=None):
+    """Create courses with quizzes and questions for quiz submission stress tests."""
+    if course_count is None:
+        course_count = QUIZ_COURSE_COUNT
+    if student_count is None:
+        student_count = QUIZ_STUDENT_COUNT
+
+    students = _create_stress_students(student_count)
+    courses = _create_quiz_courses(course_count)
+    for student in students[:student_count]:
+        for course_title in courses:
+            course_name = frappe.db.get_value("LMS Course", {"title": course_title}, "name")
+            if course_name and not frappe.db.exists(
+                "LMS Enrollment", {"member": student, "course": course_name}
+            ):
+                enrollment = frappe.new_doc("LMS Enrollment")
+                enrollment.update({"member": student, "course": course_name})
+                enrollment.save(ignore_permissions=True)
+
+    frappe.db.commit()
+    quizzes = list(_QUIZ_QUESTIONS_CACHE.keys())
+    return {"courses": courses, "students": students, "quizzes": quizzes, "password": USER_PASSWORD}
+
+
+def _create_quiz_courses(count):
+    created = []
+    _ensure_instructor()
+    for i in range(count):
+        title = f"Quiz Stress Course {i + 1}"
+        if frappe.db.exists("LMS Course", {"title": title}):
+            created.append(title)
+            continue
+        course = frappe.new_doc("LMS Course")
+        course.update({
+            "title": title,
+            "short_introduction": f"Quiz stress course #{i + 1}",
+            "description": "Auto-generated course for quiz submission stress testing.",
+            "published": 1,
+            "upcoming": 0,
+            "disable_self_enrollment": 0,
+            "instructors": [{"instructor": "stress_instructor@test.com"}],
+        })
+        course.save(ignore_permissions=True)
+
+        chapter = _create_chapter(title, course.name)
+        lesson = _create_lesson(f"Lesson 1 - {title}", chapter.name, course.name)
+        quiz = _create_quiz(f"Quiz - {title}", lesson.name, course.name)
+        _QUIZ_QUESTIONS_CACHE[quiz] = _get_question_names(quiz)
+
+        created.append(title)
+    return created
+
+
+def _create_questions(count):
+    questions = []
+    for i in range(count):
+        title = f"Stress Question {frappe.generate_hash(length=6)}"
+        existing = frappe.db.exists("LMS Question", {"question": title})
+        if existing:
+            questions.append(frappe.get_doc("LMS Question", existing))
+            continue
+        q = frappe.new_doc("LMS Question")
+        q.update({
+            "question": title,
+            "type": "Choices",
+            "option_1": "Correct Answer",
+            "is_correct_1": 1,
+            "option_2": "Wrong Answer A",
+            "is_correct_2": 0,
+            "option_3": "Wrong Answer B",
+            "is_correct_3": 0,
+            "option_4": "Wrong Answer C",
+            "is_correct_4": 0,
+        })
+        q.save(ignore_permissions=True)
+        questions.append(q)
+    return questions
+
+
+def _create_quiz(quiz_title, lesson_name, course_name):
+    existing = frappe.db.exists("LMS Quiz", {"title": quiz_title})
+    if existing:
+        return existing
+
+    questions = _create_questions(QUESTIONS_PER_QUIZ)
+    quiz = frappe.new_doc("LMS Quiz")
+    quiz.update({
+        "title": quiz_title,
+        "lesson": lesson_name,
+        "course": course_name,
+        "passing_percentage": 50,
+        "max_attempts": 0,
+    })
+    for q in questions:
+        quiz.append("questions", {"question": q.name, "marks": 2})
+    quiz.save(ignore_permissions=True)
+    return quiz.name
+
+
+def _get_question_names(quiz_name):
+    rows = frappe.get_all(
+        "LMS Quiz Question",
+        {"parent": quiz_name},
+        ["question", "marks"],
+    )
+    return [{"name": r.question, "marks": r.marks} for r in rows]
+
+
 def _create_stress_students(count):
     created = []
     for i in range(count):

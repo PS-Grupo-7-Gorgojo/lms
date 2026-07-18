@@ -13,7 +13,7 @@ Usage:
 Scenarios:
     - enrollment       : Ráfagas de inscripciones concurrentes
     - certificate      : Solicitudes masivas de certificados
-    - quiz_submission  : Entregas simultáneas de quizzes (TODO)
+    - quiz_submission  : Entregas simultáneas de quizzes
     - course_access    : Acceso concurrente a cursos y evaluaciones (TODO)
     - redis_queue      : Saturación de colas Redis/RQ (TODO)
 """
@@ -23,10 +23,12 @@ import os
 from locust import events
 from tests.stress.scenarios.enrollment import EnrollmentStressUser
 from tests.stress.scenarios.certificate import CertificateStressUser
+from tests.stress.scenarios.quiz_submission import QuizSubmissionStressUser
 
 _SCENARIO_MAP = {
     "enrollment": EnrollmentStressUser,
     "certificate": CertificateStressUser,
+    "quiz_submission": QuizSubmissionStressUser,
 }
 
 user_classes = list(_SCENARIO_MAP.values())

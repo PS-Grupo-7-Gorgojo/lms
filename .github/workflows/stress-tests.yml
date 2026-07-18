@@ -129,6 +129,8 @@ jobs:
           SCENARIO="${{ github.event.inputs.scenario || 'enrollment' }}"
           if [ "$SCENARIO" = "certificate" ]; then
             bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_certificate_data
+          elif [ "$SCENARIO" = "quiz_submission" ]; then
+            bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_quiz_data
           else
             bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_enrollment_data
           fi
