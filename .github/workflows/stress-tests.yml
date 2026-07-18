@@ -140,6 +140,16 @@ jobs:
       - name: Install Locust
         run: pip3 install locust
 
+      - name: Print test config
+        run: |
+          SCENARIO="${{ github.event.inputs.scenario || 'enrollment' }}"
+          echo "============================================"
+          echo " Escenario    : $SCENARIO"
+          echo " Usuarios     : ${{ github.event.inputs.users || 200 }}"
+          echo " Spawn rate   : ${{ github.event.inputs.spawn_rate || 50 }}/s"
+          echo " Duración     : ${{ github.event.inputs.duration || '120s' }}"
+          echo "============================================"
+
       - name: Run stress tests
         working-directory: /home/runner/frappe-bench/apps/lms
         env:
@@ -163,6 +173,24 @@ jobs:
         with:
           name: stress-reports-${{ github.event.inputs.scenario || 'enrollment' }}-${{ github.run_id }}
           path: /home/runner/frappe-bench/apps/lms/reports/stress/
+
+      - name: Show stress test summary
+        if: ${{ always() }}
+        run: |
+          SCENARIO="${{ github.event.inputs.scenario || 'enrollment' }}"
+          echo "============================================"
+          echo " Resumen de prueba de estrés: $SCENARIO"
+          echo "============================================"
+          if [ -f ~/frappe-bench/apps/lms/reports/stress/stress_stats.csv ]; then
+            echo ""
+            echo "--- Stats CSV ---"
+            cat ~/frappe-bench/apps/lms/reports/stress/stress_stats.csv
+            echo ""
+            echo "--- Failure CSV ---"
+            cat ~/frappe-bench/apps/lms/reports/stress/stress_failures.csv 2>/dev/null || echo "(sin fallos)"
+          else
+            echo "WARNING: No se generaron estadísticas. Posible error en la ejecución."
+          fi
 
       - name: Stop bench server
         if: ${{ always() }}
