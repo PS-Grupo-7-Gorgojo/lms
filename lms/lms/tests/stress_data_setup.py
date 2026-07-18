@@ -57,6 +57,7 @@ def _create_stress_courses(count):
             "published": 1,
             "upcoming": 0,
             "disable_self_enrollment": 0,
+            "instructors": [{"instructor": "stress_instructor@test.com"}],
         })
         course.save(ignore_permissions=True)
         created.append(title)
