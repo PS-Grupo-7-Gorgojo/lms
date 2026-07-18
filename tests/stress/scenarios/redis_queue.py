@@ -12,7 +12,6 @@ class RedisQueueStressUser(HttpUser):
       - POST create_certificate (RQ email)
       - POST submit_quiz (notif)
       - POST save_progress (cache + recalculate)
-      - GET get_my_courses (cache + DB)
       - GET get_chart_details (agregaciones)
     """
     wait_time = between(0, 1)
@@ -20,6 +19,7 @@ class RedisQueueStressUser(HttpUser):
 
     def on_start(self):
         self._idx = next(self.__class__._counter)
+        self._logged_in = False
         email, password = get_student_credentials(self._idx)
         with self.client.post(
             "/api/method/login",
@@ -29,8 +29,11 @@ class RedisQueueStressUser(HttpUser):
         ) as resp:
             if resp.status_code != 200:
                 resp.failure(f"Login failed ({resp.status_code})")
-                return
+            else:
+                self._logged_in = True
+                self._setup()
 
+    def _setup(self):
         idx = (self._idx % 4) + 1
         self._course_title = f"Redis Stress Course {idx}"
         self._quiz_title = f"RQ Quiz - Redis Stress Course {idx}"
@@ -80,6 +83,8 @@ class RedisQueueStressUser(HttpUser):
 
     @task(5)
     def create_certificate_rq(self):
+        if not self._logged_in:
+            return
         self.client.post(
             "/api/method/lms.lms.doctype.lms_certificate.lms_certificate.create_certificate",
             json={"course": self._course_title},
@@ -88,7 +93,7 @@ class RedisQueueStressUser(HttpUser):
 
     @task(4)
     def submit_quiz_rq(self):
-        if not self._quiz_name or not getattr(self, "_quiz_questions", None):
+        if not self._logged_in or not self._quiz_name or not getattr(self, "_quiz_questions", None):
             return
         self.client.post(
             "/api/method/lms.lms.doctype.lms_quiz.lms_quiz.submit_quiz",
@@ -100,15 +105,8 @@ class RedisQueueStressUser(HttpUser):
         )
 
     @task(3)
-    def get_my_courses(self):
-        self.client.get(
-            "/api/method/lms.lms.api.get_my_courses",
-            name="GET get_my_courses",
-        )
-
-    @task(2)
     def save_progress_cache(self):
-        if not self._lesson_name:
+        if not self._logged_in or not self._lesson_name:
             return
         self.client.post(
             "/api/method/lms.lms.doctype.course_lesson.course_lesson.save_progress",
@@ -116,8 +114,10 @@ class RedisQueueStressUser(HttpUser):
             name="POST save_progress",
         )
 
-    @task(1)
+    @task(2)
     def get_chart_details(self):
+        if not self._logged_in:
+            return
         self.client.get(
             "/api/method/lms.lms.api.get_chart_details",
             name="GET get_chart_details",

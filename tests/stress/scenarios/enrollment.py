@@ -18,6 +18,7 @@ class EnrollmentStressUser(HttpUser):
 
     def on_start(self):
         self._idx = next(self.__class__._counter)
+        self._logged_in = False
         email, password = get_student_credentials(self._idx)
         with self.client.post(
             "/api/method/login",
@@ -27,10 +28,13 @@ class EnrollmentStressUser(HttpUser):
         ) as resp:
             if resp.status_code != 200:
                 resp.failure(f"Login failed ({resp.status_code})")
-                return
+            else:
+                self._logged_in = True
 
     @task(4)
     def browse_my_courses(self):
+        if not self._logged_in:
+            return
         self.client.get(
             "/api/method/lms.lms.api.get_my_courses",
             name="GET get_my_courses",
@@ -38,6 +42,8 @@ class EnrollmentStressUser(HttpUser):
 
     @task(3)
     def get_chart_details(self):
+        if not self._logged_in:
+            return
         self.client.get(
             "/api/method/lms.lms.api.get_chart_details",
             name="GET get_chart_details",
@@ -45,6 +51,8 @@ class EnrollmentStressUser(HttpUser):
 
     @task(2)
     def get_certified_participants(self):
+        if not self._logged_in:
+            return
         self.client.get(
             "/api/method/lms.lms.api.get_certified_participants",
             name="GET get_certified_participants",
@@ -52,6 +60,8 @@ class EnrollmentStressUser(HttpUser):
 
     @task(1)
     def get_certification_details(self):
+        if not self._logged_in:
+            return
         idx = (self._idx % 5) + 1
         course_title = f"Stress Course {idx}"
         self.client.get(

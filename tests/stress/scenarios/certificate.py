@@ -10,12 +10,14 @@ class CertificateStressUser(HttpUser):
     Endpoints:
       - POST /api/method/lms.lms.doctype.lms_certificate.lms_certificate.create_certificate
       - GET  /api/method/lms.lms.api.get_certification_details
+      - GET  /api/method/lms.lms.api.get_chart_details
     """
     wait_time = between(0, 1)
     _counter = itertools.count(1)
 
     def on_start(self):
         self._idx = next(self.__class__._counter)
+        self._logged_in = False
         email, password = get_student_credentials(self._idx)
         with self.client.post(
             "/api/method/login",
@@ -25,10 +27,13 @@ class CertificateStressUser(HttpUser):
         ) as resp:
             if resp.status_code != 200:
                 resp.failure(f"Login failed ({resp.status_code})")
-                return
+            else:
+                self._logged_in = True
 
     @task(5)
     def request_certificate(self):
+        if not self._logged_in:
+            return
         idx = (self._idx % 5) + 1
         course_title = f"Cert Stress Course {idx}"
         with self.client.post(
@@ -42,10 +47,21 @@ class CertificateStressUser(HttpUser):
 
     @task(1)
     def check_certification_details(self):
+        if not self._logged_in:
+            return
         idx = (self._idx % 5) + 1
         course_title = f"Cert Stress Course {idx}"
         self.client.get(
             "/api/method/lms.lms.api.get_certification_details",
             params={"course": course_title},
             name="GET get_certification_details",
+        )
+
+    @task(1)
+    def get_chart_details(self):
+        if not self._logged_in:
+            return
+        self.client.get(
+            "/api/method/lms.lms.api.get_chart_details",
+            name="GET get_chart_details",
         )
