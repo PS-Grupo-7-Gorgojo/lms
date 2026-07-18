@@ -21,7 +21,7 @@ class EnrollmentStressUser(HttpUser):
         self._email = email
         with self.client.post(
             "/api/method/login",
-            json={"usr": email, "pwd": password},
+            data={"usr": email, "pwd": password},
             catch_response=True,
             name="POST /api/method/login",
         ) as resp:

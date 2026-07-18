@@ -25,7 +25,7 @@ class QuizSubmissionStressUser(HttpUser):
         email, password = get_student_credentials(self._idx)
         with self.client.post(
             "/api/method/login",
-            json={"usr": email, "pwd": password},
+            data={"usr": email, "pwd": password},
             catch_response=True,
             name="POST /api/method/login",
         ) as resp:
