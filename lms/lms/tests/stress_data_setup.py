@@ -314,6 +314,10 @@ def _create_stress_students(count):
     for i in range(count):
         email = f"stress_student{i + 1}@test.com"
         if frappe.db.exists("User", email):
+            if not frappe.db.exists("Has Role", {"parent": email, "role": "LMS Student"}):
+                user_doc = frappe.get_doc("User", email)
+                user_doc.append("roles", {"role": "LMS Student"})
+                user_doc.save(ignore_permissions=True)
             created.append(email)
             continue
 
@@ -324,6 +328,7 @@ def _create_stress_students(count):
             "last_name": "Student",
             "send_welcome_email": 0,
         })
+        user.append("roles", {"role": "LMS Student"})
         user.save(ignore_permissions=True)
         update_password(email, USER_PASSWORD)
         created.append(email)
