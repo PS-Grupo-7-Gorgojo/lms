@@ -22,25 +22,27 @@ class CertificateStressUser(HttpUser):
     def on_start(self):
         self._idx = next(self.__class__._counter)
         email, password = get_student_credentials(self._idx)
-        resp = self.client.post(
+        with self.client.post(
             "/api/method/login",
             json={"usr": email, "pwd": password},
+            catch_response=True,
             name="POST /api/method/login",
-        )
-        if resp.status_code != 200:
-            resp.failure(f"Login failed: {resp.text}")
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"Login failed ({resp.status_code})")
 
     @task(5)
     def request_certificate(self):
         idx = (self._idx % 5) + 1
         course_title = f"Cert Stress Course {idx}"
-        resp = self.client.post(
+        with self.client.post(
             "/api/method/lms.lms.doctype.lms_certificate.lms_certificate.create_certificate",
             json={"course": course_title},
+            catch_response=True,
             name="POST create_certificate",
-        )
-        if resp.status_code != 200:
-            resp.failure(f"Certificate creation failed: {resp.text}")
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"Cert failed ({resp.status_code})")
 
     @task(1)
     def check_certification_details(self):

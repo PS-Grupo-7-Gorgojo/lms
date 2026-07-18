@@ -23,14 +23,15 @@ class QuizSubmissionStressUser(HttpUser):
     def on_start(self):
         self._idx = next(self.__class__._counter)
         email, password = get_student_credentials(self._idx)
-        resp = self.client.post(
+        with self.client.post(
             "/api/method/login",
             json={"usr": email, "pwd": password},
+            catch_response=True,
             name="POST /api/method/login",
-        )
-        if resp.status_code != 200:
-            resp.failure(f"Login failed: {resp.text}")
-            return
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"Login failed ({resp.status_code})")
+                return
 
         idx = (self._idx % 3) + 1
         quiz_title = f"Quiz - Quiz Stress Course {idx}"

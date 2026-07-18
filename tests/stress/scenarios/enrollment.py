@@ -19,13 +19,14 @@ class EnrollmentStressUser(HttpUser):
         self._idx = next(self.__class__._counter)
         email, password = get_student_credentials(self._idx)
         self._email = email
-        resp = self.client.post(
+        with self.client.post(
             "/api/method/login",
             json={"usr": email, "pwd": password},
+            catch_response=True,
             name="POST /api/method/login",
-        )
-        if resp.status_code != 200:
-            resp.failure(f"Login failed: {resp.text}")
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"Login failed ({resp.status_code}): {resp.text}")
 
     @task(3)
     def browse_courses(self):
