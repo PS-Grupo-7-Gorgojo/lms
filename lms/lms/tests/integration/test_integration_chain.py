@@ -1,6 +1,6 @@
 """
 Pruebas de integración para Cadena Completa de Eventos
-Casos: INT-028 (Course + Enrollment + Badge + Index - Cadena completa)
+Casos: INT-027 (Course + Enrollment + Badge + Index - Cadena completa)
 """
 
 import os
@@ -179,16 +179,16 @@ class TestIntegrationChain(IntegrationTestCase):
 	    super().tearDown()
 
     # ======================================================================
-    # INT-028: Cadena completa de eventos encadenados
+    # INT-027: Cadena completa de eventos encadenados
     # ======================================================================
 
-    def test_int_028_complete_integration_chain(self):
+    def test_int_027_complete_integration_chain(self):
         """
-        INT-028: Cadena completa: crear curso → matricular usuario →
+        INT-027: Cadena completa: crear curso → matricular usuario →
         completar lección → badge → índice actualizado
         """
         print("\n" + "="*70)
-        print("> INT-028: Cadena completa de eventos encadenados")
+        print("> INT-027: Cadena completa de eventos encadenados")
         print("="*70)
 
         # --- 1. Verificar curso creado ---
@@ -275,7 +275,7 @@ class TestIntegrationChain(IntegrationTestCase):
         print(f"    Curso NO aparece con el título antiguo: '{self.course_title}'")
 
         print("\n" + "="*70)
-        print("  INT-028: Prueba completada exitosamente")
+        print("  INT-027: Prueba completada exitosamente")
         print("   - Curso creado correctamente")
         print("   - Estudiante matriculado")
         print("   - Badge asignado al matricularse")
@@ -289,12 +289,12 @@ class TestIntegrationChain(IntegrationTestCase):
     # CASO NEGATIVO: Sin badge sin matrícula
     # ======================================================================
 
-    def test_int_028_no_badge_without_enrollment(self):
+    def test_int_027_no_badge_without_enrollment(self):
         """
-        INT-028-NEG: Verificar que NO se asigna badge sin matrícula
+        INT-027-NEG: Verificar que NO se asigna badge sin matrícula
         """
         print("\n" + "="*70)
-        print("🧪 INT-028-NEG: Sin badge sin matrícula")
+        print("🧪 INT-027-NEG: Sin badge sin matrícula")
         print("="*70)
 
         # --- 1. Verificar que NO hay matrícula ---
@@ -316,6 +316,6 @@ class TestIntegrationChain(IntegrationTestCase):
         print("    No hay badge asignado (sin matrícula)")
 
         print("\n" + "="*70)
-        print("(n.n) INT-028-NEG: Prueba completada exitosamente")
+        print("(n.n) INT-027-NEG: Prueba completada exitosamente")
         print("="*70)
 
