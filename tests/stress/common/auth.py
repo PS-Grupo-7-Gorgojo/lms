@@ -35,8 +35,11 @@ class FrappeAuth:
 
 
 def get_student_credentials(idx: int):
-    email = os.getenv("STRESS_STUDENT_EMAIL_TEMPLATE", "stress_student{}@test.com").format(
-        idx
-    )
+    max_students = int(os.getenv("STRESS_STUDENT_MAX", "50"))
+    wrapped = ((idx - 1) % max_students) + 1
+    email = os.getenv(
+        "STRESS_STUDENT_EMAIL_TEMPLATE",
+        "stress_student{}@test.com",
+    ).format(wrapped)
     password = os.getenv("STRESS_STUDENT_PASSWORD", "stress123")
     return email, password

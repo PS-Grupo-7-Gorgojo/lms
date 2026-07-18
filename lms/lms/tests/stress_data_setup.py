@@ -14,6 +14,13 @@ STUDENT_COUNT = 50
 CERT_STUDENT_COUNT = 30
 
 
+def reset_login_trackers():
+    """Clear Redis login attempt trackers so stress tests don't lock accounts."""
+    cache = frappe.cache()
+    cache.delete_keys("*login_attempt*")
+    frappe.db.commit()
+
+
 def seed_enrollment_data(course_count=5, student_count=None):
     """Create test users and courses for enrollment stress tests."""
     if student_count is None:

@@ -140,6 +140,10 @@ jobs:
       - name: Install Locust
         run: pip3 install locust
 
+      - name: Reset login trackers
+        working-directory: /home/runner/frappe-bench
+        run: bench --site lms.test execute lms.lms.tests.stress_data_setup.reset_login_trackers
+
       - name: Print test config
         run: |
           SCENARIO="${{ github.event.inputs.scenario || 'enrollment' }}"
@@ -154,6 +158,7 @@ jobs:
         working-directory: /home/runner/frappe-bench/apps/lms
         env:
           SCENARIO: ${{ github.event.inputs.scenario || 'enrollment' }}
+          STRESS_STUDENT_MAX: ${{ (github.event.inputs.scenario == 'certificate' || github.event.inputs.scenario == 'quiz_submission') && '30' || (github.event.inputs.scenario == 'redis_queue' && '40') || '50' }}
         run: |
           mkdir -p reports/stress
           locust \
