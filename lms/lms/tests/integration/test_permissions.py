@@ -1,3 +1,8 @@
+"""
+Pruebas de integración para Módulo 2: Permisos y Roles
+Casos: INT-021 (Course Creator puede matricularse en su propio curso)
+       INT-022 (Moderator no puede ver submission de otro batch)
+"""
 import os
 import unittest
 
@@ -11,7 +16,7 @@ class TestPermissionsIntegration(BaseTestUtils):
 	Clase para pruebas de integración de permisos en el LMS de Frappe.
 	Cubre los casos:
 	- INT-021: El Course Creator se puede matricular en su propio curso.
-	- INT-022: Un Moderador no puede acceder a las entregas de cuestionarios (Quiz Submissions) 
+	- INT-022: Un Moderador no puede acceder a las entregas de cuestionarios (Quiz Submissions)
 	  de estudiantes de otros lotes (o que no le pertenecen).
 	"""
 
@@ -20,12 +25,12 @@ class TestPermissionsIntegration(BaseTestUtils):
 
 	def test_course_creator_can_enroll_in_own_course(self):
 		"""
-		INT-021: Validar que un usuario con rol 'Course Creator' pueda 
+		INT-021: Validar que un usuario con rol 'Course Creator' pueda
 		matricularse de manera normal en su propio curso.
 		"""
 		test_id = frappe.generate_hash()[:8]
 		creator_email = f"creator_{test_id}@example.com"
-		
+
 		# Crear el usuario Course Creator
 		self._create_user(
 			email=creator_email,
@@ -51,7 +56,7 @@ class TestPermissionsIntegration(BaseTestUtils):
 				"member": creator_email
 			})
 			enrollment.insert(ignore_permissions=False)
-			
+
 			# Guardar para cleanup y verificar que se insertó correctamente
 			self.cleanup_items.append(("LMS Enrollment", enrollment.name))
 			self.assertTrue(frappe.db.exists("LMS Enrollment", enrollment.name))
