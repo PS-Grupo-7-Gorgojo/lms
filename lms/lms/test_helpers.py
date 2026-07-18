@@ -18,18 +18,12 @@ class BaseTestUtils(UnitTestCase):
 		self.cleanup_items = []
 
 	def tearDown(self):
-		has_badge_deletion = False
 		for item_type, item_name in reversed(self.cleanup_items):
 			if frappe.db.exists(item_type, item_name):
 				try:
 					frappe.delete_doc(item_type, item_name, force=True)
-					if item_type == "LMS Badge":
-						has_badge_deletion = True
 				except Exception as e:
 					print(f"Error deleting {item_type} {item_name}: {e}")
-		if has_badge_deletion:
-			frappe.cache_manager.clear_doctype_map("LMS Badge")
-			frappe.cache().delete_key("doctype_map_LMS Badge")
 
 	def _create_user(self, email, first_name, last_name, roles, user_type="Website User"):
 		if frappe.db.exists("User", email):
@@ -61,14 +55,6 @@ class BaseTestUtils(UnitTestCase):
 				ignore_permissions=True
 			)
 			self.cleanup_items.append(("LMS Category", "Business"))
-
-		if not frappe.db.exists("User", instructor):
-			self._create_user(
-				email=instructor,
-				first_name="Frappe",
-				last_name="Instructor",
-				roles=["Course Creator"],
-			)
 
 		course = frappe.new_doc("LMS Course")
 		course.update(
@@ -175,14 +161,6 @@ class BaseTestUtils(UnitTestCase):
 		return progress
 
 	def _create_evaluator(self, evaluator_email="frappe@example.com"):
-		if not frappe.db.exists("User", evaluator_email):
-			self._create_user(
-				email=evaluator_email,
-				first_name="Frappe",
-				last_name="Evaluator",
-				roles=["Batch Evaluator"],
-			)
-
 		if frappe.db.exists("Course Evaluator", evaluator_email):
 			return frappe.get_doc("Course Evaluator", evaluator_email)
 
@@ -212,17 +190,6 @@ class BaseTestUtils(UnitTestCase):
 		existing = frappe.db.exists("LMS Batch", {"title": title})
 		if existing:
 			return frappe.get_doc("LMS Batch", existing)
-
-		if not frappe.db.exists("User", instructor):
-			self._create_user(
-				email=instructor,
-				first_name="Frappe",
-				last_name="Instructor",
-				roles=["Course Creator"],
-			)
-
-		if not frappe.db.exists("Course Evaluator", evaluator):
-			self._create_evaluator(evaluator)
 
 		batch = frappe.new_doc("LMS Batch")
 		batch.update(
