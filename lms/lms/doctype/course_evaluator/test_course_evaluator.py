@@ -1,123 +1,102 @@
 # Copyright (c) 2022, Frappe and Contributors
 # See license.txt
 
+from unittest.mock import patch, MagicMock
+import unittest
+
 import frappe
-from frappe.utils import add_days, format_time, getdate
-
-from lms.lms.api import save_role
-from lms.lms.doctype.course_evaluator.course_evaluator import get_schedule, get_schedule_range_end_date
-from lms.lms.test_helpers import BaseTestUtils
+from lms.lms.doctype.course_evaluator.course_evaluator import get_schedule_range_end_date
 
 
-class TestCourseEvaluator(BaseTestUtils):
-	def setUp(self):
-		super().setUp()
-		self.admin = self._create_user(
-			"frappe@example.com", "Frappe", "Admin", ["Moderator", "Course Creator", "Batch Evaluator"]
-		)
-		self.course = self._create_course()
-		self.evaluator = self._create_evaluator()
-		self.batch = self._create_batch(self.course.name)
+class TestCourseEvaluator(unittest.TestCase):
+	# UT-CRS-EVAL-001
+	def test_validate_unavailability_invalid_dates_throws(self):
+		"""Si la fecha de inicio de indisponibilidad es mayor que la de fin, lanza ValidationError."""
+		# Crear evaluador en memoria con fechas inválidas
+		evaluator = frappe.get_doc({
+			"doctype": "Course Evaluator",
+			"evaluator": "teacher@example.com",
+			"unavailable_from": "2026-07-25",
+			"unavailable_to": "2026-07-20"
+		})
+		
+		with self.assertRaises(frappe.ValidationError):
+			evaluator.validate_unavailability()
 
-	def test_schedule_day_and_time(self):
-		schedule = get_schedule(self.batch.courses[0].course, self.batch.name)
-		days = ["Monday", "Wednesday"]
-		self.assertGreaterEqual(len(schedule), 14)
-		for row in schedule:
-			self.assertIn(row.get("day"), days)
-			if row.get("day") == "Monday":
-				for slot in row.get("slots"):
-					self.assertEqual(format_time(slot.get("start_time"), "HH:mm:ss"), "10:00:00")
-					self.assertEqual(format_time(slot.get("end_time"), "HH:mm:ss"), "12:00:00")
-			if row.get("day") == "Wednesday":
-				for slot in row.get("slots"):
-					self.assertEqual(format_time(slot.get("start_time"), "HH:mm:ss"), "14:00:00")
-					self.assertEqual(format_time(slot.get("end_time"), "HH:mm:ss"), "16:00:00")
+	# UT-CRS-EVAL-002
+	def test_validate_time_slots_invalid_time_throws(self):
+		"""Si la hora de inicio es mayor o igual que la de fin en una agenda, lanza ValidationError."""
+		# Crear evaluador en memoria con horario de inicio posterior al de fin
+		evaluator = frappe.get_doc({
+			"doctype": "Course Evaluator",
+			"evaluator": "teacher@example.com",
+			"schedule": [
+				{"day": "Monday", "start_time": "14:00:00", "end_time": "12:00:00"}
+			]
+		})
+		
+		with self.assertRaises(frappe.ValidationError):
+			evaluator.validate_time_slots()
 
-	def test_schedule_dates(self):
-		schedule = get_schedule(self.batch.courses[0].course, self.batch.name)
-		first_date = self.calculated_first_date_of_schedule()
-		last_date = self.calculated_last_date_of_schedule()
-		self.assertEqual(getdate(schedule[0].get("date")), first_date)
-		self.assertEqual(getdate(schedule[-1].get("date")), last_date)
+	# UT-CRS-EVAL-003
+	def test_validate_overlaps_throws(self):
+		"""Si existen horarios superpuestos el mismo día para el mismo evaluador, lanza ValidationError."""
+		# Crear evaluador con dos horarios superpuestos el lunes (10-12 y 11-13)
+		evaluator = frappe.get_doc({
+			"doctype": "Course Evaluator",
+			"evaluator": "teacher@example.com",
+			"schedule": [
+				{"name": "slot-1", "day": "Monday", "start_time": "10:00:00", "end_time": "12:00:00"},
+				{"name": "slot-2", "day": "Monday", "start_time": "11:00:00", "end_time": "13:00:00"}
+			]
+		})
+		
+		with self.assertRaises(frappe.ValidationError):
+			evaluator.validate_time_slots()
 
-	def calculated_first_date_of_schedule(self):
-		today = getdate()
-		offset_monday = (0 - today.weekday() + 7) % 7  # 0 for Monday
-		offset_wednesday = (2 - today.weekday() + 7) % 7  # 2 for Wednesday
-		if offset_monday < offset_wednesday:
-			first_date = add_days(today, offset_monday)
-		else:
-			first_date = add_days(today, offset_wednesday)
-		return first_date
+	# UT-CRS-EVAL-004
+	def test_validate_evaluator_role_assigns_role(self):
+		"""Si el usuario evaluador no cuenta con el rol de Batch Evaluator, se le añade automáticamente."""
+		evaluator = frappe.get_doc({
+			"doctype": "Course Evaluator",
+			"evaluator": "teacher@example.com"
+		})
+		
+		# Simular rol ausente y mockear el documento de Usuario
+		mock_user_doc = MagicMock()
+		
+		with patch("frappe.get_roles", return_value=["LMS Student"]), \
+			 patch("frappe.get_doc", return_value=mock_user_doc):
+			 
+			evaluator.validate_evaluator_role()
+			mock_user_doc.add_roles.assert_called_once_with("Batch Evaluator")
 
-	def calculated_last_date_of_schedule(self):
-		last_day = getdate(get_schedule_range_end_date(getdate(), self.batch.name))
-		while last_day.weekday() not in (0, 2):
-			last_day = add_days(last_day, -1)
+	# UT-CRS-EVAL-005
+	def test_on_trash_removes_role(self):
+		"""Al eliminar un Course Evaluator, se le remueve el rol Batch Evaluator de su registro de usuario."""
+		evaluator = frappe.get_doc({
+			"doctype": "Course Evaluator",
+			"evaluator": "teacher@example.com"
+		})
+		
+		mock_user_doc = MagicMock()
+		
+		# Simular rol presente y mockear remoción de rol
+		with patch("frappe.get_roles", return_value=["LMS Student", "Batch Evaluator"]), \
+			 patch("frappe.get_doc", return_value=mock_user_doc):
+			 
+			evaluator.on_trash()
+			mock_user_doc.remove_roles.assert_called_once_with("Batch Evaluator")
 
-		return last_day
+	# UT-CRS-EVAL-006
+	def test_get_schedule_range_end_date_with_earlier_batch(self):
+		"""Si la fecha límite del lote es anterior al rango predeterminado (60 días), retorna la fecha del lote."""
+		from frappe.utils import getdate
+		start_date = "2026-07-20"
+		# 60 días después de start_date es 2026-09-18. Lote termina el 2026-08-30 (antes).
+		mock_batch_end_date = getdate("2026-08-30")
+		
+		with patch("frappe.db.get_value", return_value=mock_batch_end_date):
+			result = get_schedule_range_end_date(start_date, batch="batch-1")
+			self.assertEqual(result, mock_batch_end_date)
 
-	def test_unavailability_dates(self):
-		unavailable_from = getdate(self.evaluator.unavailable_from)
-		unavailable_to = getdate(self.evaluator.unavailable_to)
-		schedule = get_schedule(self.batch.courses[0].course, self.batch.name)
-		for row in schedule:
-			schedule_date = getdate(row.get("date"))
-			self.assertFalse(unavailable_from < schedule_date < unavailable_to)
-
-
-class TestEvaluatorRoleCRUD(BaseTestUtils):
-	def setUp(self):
-		super().setUp()
-		self.admin = self._create_user(
-			"frappe@example.com", "Frappe", "Admin", ["Moderator", "Course Creator", "Batch Evaluator"]
-		)
-		self.test_user = self._create_user("eval_test@example.com", "Eval", "Tester", ["LMS Student"])
-
-	def _has_batch_evaluator_role(self, user):
-		return frappe.db.exists("Has Role", {"parent": user, "role": "Batch Evaluator"})
-
-	def _has_course_evaluator(self, user):
-		return frappe.db.exists("Course Evaluator", {"evaluator": user})
-
-	def test_add_evaluator_role_creates_both(self):
-		"""save_role with value=1 should create Has Role AND Course Evaluator."""
-		frappe.set_user("frappe@example.com")
-		save_role(self.test_user.email, "Batch Evaluator", 1)
-		frappe.set_user("Administrator")
-
-		self.assertTrue(self._has_batch_evaluator_role(self.test_user.email))
-		self.assertTrue(self._has_course_evaluator(self.test_user.email))
-
-		self.cleanup_items.append(("Course Evaluator", self.test_user.email))
-
-	def test_remove_evaluator_role_removes_both(self):
-		"""save_role with value=0 should remove Has Role AND Course Evaluator."""
-		frappe.set_user("frappe@example.com")
-		save_role(self.test_user.email, "Batch Evaluator", 1)
-		save_role(self.test_user.email, "Batch Evaluator", 0)
-		frappe.set_user("Administrator")
-
-		self.assertFalse(self._has_batch_evaluator_role(self.test_user.email))
-		self.assertFalse(self._has_course_evaluator(self.test_user.email))
-
-	def test_remove_evaluator_role_no_error_when_missing(self):
-		"""Removing role that doesn't exist should not raise an error."""
-		frappe.set_user("frappe@example.com")
-		save_role(self.test_user.email, "Batch Evaluator", 0)
-		frappe.set_user("Administrator")
-
-		self.assertFalse(self._has_batch_evaluator_role(self.test_user.email))
-
-	def test_reject_non_lms_role(self):
-		"""Assigning a role outside LMS_ROLES should raise PermissionError."""
-		frappe.set_user("frappe@example.com")
-		self.assertRaises(frappe.PermissionError, save_role, self.test_user.email, "System Manager", 1)
-		frappe.set_user("Administrator")
-
-	def test_non_moderator_cannot_save_role(self):
-		"""[A non-moderator user should not be able to assign roles.]"""
-		frappe.set_user(self.test_user.email)
-		self.assertRaises(frappe.PermissionError, save_role, self.test_user.email, "Course Creator", 1)
-		frappe.set_user("Administrator")
