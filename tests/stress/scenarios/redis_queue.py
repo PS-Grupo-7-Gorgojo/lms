@@ -1,3 +1,4 @@
+import itertools
 import json
 from locust import HttpUser, task, between
 from tests.stress.common.auth import get_student_credentials
@@ -19,9 +20,11 @@ class RedisQueueStressUser(HttpUser):
       3. Ejecutar tareas en peso proporcional a su impacto en Redis/RQ
     """
     wait_time = between(0, 1)
+    _counter = itertools.count(1)
 
     def on_start(self):
-        email, password = get_student_credentials(self._user_index + 1)
+        self._idx = next(self.__class__._counter)
+        email, password = get_student_credentials(self._idx)
         resp = self.client.post(
             "/api/method/login",
             json={"usr": email, "pwd": password},
@@ -31,7 +34,7 @@ class RedisQueueStressUser(HttpUser):
             resp.failure(f"Login failed: {resp.text}")
             return
 
-        idx = (self._user_index % 4) + 1
+        idx = (self._idx % 4) + 1
         self._course_title = f"Redis Stress Course {idx}"
         self._course_name = self._resolve_course()
         self._quiz_name = self._resolve_quiz()

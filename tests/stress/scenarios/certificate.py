@@ -1,3 +1,4 @@
+import itertools
 from locust import HttpUser, task, between
 from tests.stress.common.auth import get_student_credentials
 
@@ -13,14 +14,14 @@ class CertificateStressUser(HttpUser):
 
     Endpoints bajo estrés:
       - POST /api/method/lms.lms.doctype.lms_certificate.lms_certificate.create_certificate
-        → Valida elegibilidad (DB read) + crea certificado (DB write) + email (RQ queue)
       - GET  /api/method/lms.lms.api.get_certification_details
-        → Consulta estado de certificación
     """
     wait_time = between(0, 1)
+    _counter = itertools.count(1)
 
     def on_start(self):
-        email, password = get_student_credentials(self._user_index + 1)
+        self._idx = next(self.__class__._counter)
+        email, password = get_student_credentials(self._idx)
         resp = self.client.post(
             "/api/method/login",
             json={"usr": email, "pwd": password},
@@ -31,7 +32,7 @@ class CertificateStressUser(HttpUser):
 
     @task(5)
     def request_certificate(self):
-        idx = (self._user_index % 5) + 1
+        idx = (self._idx % 5) + 1
         course_title = f"Cert Stress Course {idx}"
         resp = self.client.post(
             "/api/method/lms.lms.doctype.lms_certificate.lms_certificate.create_certificate",
@@ -43,7 +44,7 @@ class CertificateStressUser(HttpUser):
 
     @task(1)
     def check_certification_details(self):
-        idx = (self._user_index % 5) + 1
+        idx = (self._idx % 5) + 1
         course_title = f"Cert Stress Course {idx}"
         self.client.get(
             "/api/method/lms.lms.api.get_certification_details",

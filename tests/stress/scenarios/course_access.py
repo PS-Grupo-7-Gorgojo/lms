@@ -1,3 +1,4 @@
+import itertools
 from locust import HttpUser, task, between
 from tests.stress.common.auth import get_student_credentials
 
@@ -20,9 +21,11 @@ class CourseAccessStressUser(HttpUser):
       - GET /api/method/lms.lms.api.get_chart_details (agregaciones pesadas)
     """
     wait_time = between(0, 1)
+    _counter = itertools.count(1)
 
     def on_start(self):
-        email, password = get_student_credentials(self._user_index + 1)
+        self._idx = next(self.__class__._counter)
+        email, password = get_student_credentials(self._idx)
         resp = self.client.post(
             "/api/method/login",
             json={"usr": email, "pwd": password},
@@ -32,7 +35,7 @@ class CourseAccessStressUser(HttpUser):
             resp.failure(f"Login failed: {resp.text}")
             return
 
-        self._course_idx = (self._user_index % 5) + 1
+        self._course_idx = (self._idx % 5) + 1
         self._course_title = f"Stress Course {self._course_idx}"
         self._course_name = self._fetch_course_name()
         self._chapters = []
@@ -81,7 +84,7 @@ class CourseAccessStressUser(HttpUser):
             name="GET lessons",
         )
         try:
-            return [l["name"] for l in resp.json().get("data", [])]
+            return [c["name"] for c in resp.json().get("data", [])]
         except Exception:
             return []
 
@@ -109,7 +112,7 @@ class CourseAccessStressUser(HttpUser):
     def save_lesson_progress(self):
         if not self._course_name or not self._lessons:
             return
-        lesson = self._lessons[self._user_index % len(self._lessons)]
+        lesson = self._lessons[self._idx % len(self._lessons)]
         self.client.post(
             "/api/method/lms.lms.doctype.course_lesson.course_lesson.save_progress",
             json={"lesson": lesson, "course": self._course_name},
@@ -118,6 +121,8 @@ class CourseAccessStressUser(HttpUser):
 
     @task(1)
     def check_enrollment_progress(self):
+        if not self._course_name:
+            return
         self.client.get(
             "/api/resource/LMS Enrollment",
             params={

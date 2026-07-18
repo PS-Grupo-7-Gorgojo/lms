@@ -1,3 +1,4 @@
+import itertools
 import json
 from locust import HttpUser, task, between
 from tests.stress.common.auth import get_student_credentials
@@ -15,13 +16,13 @@ class QuizSubmissionStressUser(HttpUser):
     Endpoints bajo estrés:
       - GET  /api/resource/LMS Quiz (búsqueda por título)
       - POST /api/method/lms.lms.doctype.lms_quiz.lms_quiz.submit_quiz
-        → Valida intentos, evalúa respuestas (BD reads + writes),
-          notifica al miembro (RQ)
     """
     wait_time = between(0, 1)
+    _counter = itertools.count(1)
 
     def on_start(self):
-        email, password = get_student_credentials(self._user_index + 1)
+        self._idx = next(self.__class__._counter)
+        email, password = get_student_credentials(self._idx)
         resp = self.client.post(
             "/api/method/login",
             json={"usr": email, "pwd": password},
@@ -31,7 +32,7 @@ class QuizSubmissionStressUser(HttpUser):
             resp.failure(f"Login failed: {resp.text}")
             return
 
-        idx = (self._user_index % 3) + 1
+        idx = (self._idx % 3) + 1
         quiz_title = f"Quiz - Quiz Stress Course {idx}"
         self._quiz_name = self._fetch_quiz_name(quiz_title)
         if self._quiz_name:
