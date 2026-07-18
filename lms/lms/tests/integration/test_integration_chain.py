@@ -1,6 +1,6 @@
 """
 Pruebas de integración para Cadena Completa de Eventos
-Casos: INT-027 (Course + Enrollment + Badge + Index - Cadena completa)
+Casos: INT-028 (Course + Enrollment + Badge + Index - Cadena completa)
 """
 
 import os

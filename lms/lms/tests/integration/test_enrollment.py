@@ -103,6 +103,94 @@ class TestEnrollmentProgress(BaseTestUtils):
         super().tearDown()
 
     # ======================================================================
+	# INT-005: Matrícula de estudiante
+	# ======================================================================
+
+    def test_int_005_student_enrollment(self):
+	    """
+	    INT-005: Verificar que un estudiante con rol LMS Student
+	    pueda matricularse en un curso público existente
+	    """
+	    print("\n" + "="*70)
+	    print(">  INT-005: Matrícula de estudiante")
+	    print("="*70)
+
+	    # --- 1. Verificar curso creado en setUp ---
+	    print("\nPaso 1: Verificar curso base")
+	    course = frappe.get_doc("LMS Course", self.course_name)
+	    self.assertIsNotNone(course)
+	    self.assertEqual(course.published, 1, "El curso no está publicado")
+	    print(f"     Curso encontrado: {course.name} (Publicado: {course.published})")
+
+	    # --- 2. Verificar usuario estudiante ---
+	    print("\nPaso 2: Verificar usuario estudiante")
+	    user = frappe.get_doc("User", self.student_email)
+	    self.assertIsNotNone(user)
+	    roles = frappe.get_roles(user.name)
+	    self.assertIn("LMS Student", roles, "El usuario no tiene rol LMS Student")
+	    print(f"     Usuario encontrado: {user.email}")
+	    print(f"     Rol LMS Student: {'LMS Student' in roles}")
+
+	    # --- 3. Verificar que NO hay matrícula previa ---
+	    print("\nPaso 3: Verificar que NO hay matrícula previa")
+	    existing_enrollment = frappe.db.exists(
+	        "LMS Enrollment",
+	        {"member": self.student_email, "course": self.course_name}
+	    )
+	    self.assertFalse(existing_enrollment, "Ya existe una matrícula previa")
+	    print("     No hay matrícula previa")
+
+	    # --- 4. Crear matrícula usando frappe.client.insert ---
+	    print("\nPaso 4: Crear matrícula")
+	    enrollment = frappe.client.insert({
+	        "doctype": "LMS Enrollment",
+	        "member": self.student_email,
+	        "course": self.course_name
+	    })
+	    frappe.db.commit()
+
+	    self.assertIsNotNone(enrollment)
+	    self.assertEqual(enrollment.get("doctype"), "LMS Enrollment")
+	    self.assertEqual(enrollment.get("member"), self.student_email)
+	    self.assertEqual(enrollment.get("course"), self.course_name)
+	    print(f"     Matrícula creada: {enrollment.get('name')}")
+
+	    # --- 5. Verificar que la matrícula existe en la BD ---
+	    print("\nPaso 5: Verificar matrícula en la base de datos")
+	    enrollment_doc = frappe.get_doc("LMS Enrollment", enrollment.get("name"))
+	    self.assertEqual(enrollment_doc.member, self.student_email)
+	    self.assertEqual(enrollment_doc.course, self.course_name)
+	    #  El campo status no existe en LMS Enrollment
+	    print(f"     Matrícula verificada en BD")
+	    print(f"       Estudiante: {enrollment_doc.member}")
+	    print(f"       Curso: {enrollment_doc.course}")
+	    print(f"       Progreso: {enrollment_doc.progress}%")
+
+	    # --- 6. Verificar que NO hay duplicado ---
+	    print("\nPaso 6: Verificar que no se permite duplicado")
+	    with self.assertRaises(Exception) as context:
+	        frappe.client.insert({
+	            "doctype": "LMS Enrollment",
+	            "member": self.student_email,
+	            "course": self.course_name
+	        })
+	        frappe.db.commit()
+
+	    error_msg = str(context.exception).lower()
+	    self.assertTrue(
+	        "already enrolled" in error_msg or "duplicate" in error_msg,
+	        f"El error no menciona 'already enrolled'. Error: {error_msg}"
+	    )
+	    print(f"     Duplicado rechazado correctamente")
+
+	    print("\n" + "="*70)
+	    print("(n.n) INT-005: Prueba completada exitosamente")
+	    print("   - Estudiante matriculado correctamente")
+	    print("   - Matrícula verificada en base de datos")
+	    print("   - Duplicado rechazado")
+	    print("="*70)
+
+    # ======================================================================
     # INT-006: Completar lección crea progreso automático
     # ====================================================================
 
