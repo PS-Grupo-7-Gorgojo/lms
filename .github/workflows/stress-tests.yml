@@ -125,13 +125,21 @@ jobs:
 
       - name: Seed stress test data
         working-directory: /home/runner/frappe-bench
-        run: bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_enrollment_data
+        run: |
+          SCENARIO="${{ github.event.inputs.scenario || 'enrollment' }}"
+          if [ "$SCENARIO" = "certificate" ]; then
+            bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_certificate_data
+          else
+            bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_enrollment_data
+          fi
 
       - name: Install Locust
         run: pip3 install locust
 
       - name: Run stress tests
         working-directory: /home/runner/frappe-bench/apps/lms
+        env:
+          SCENARIO: ${{ github.event.inputs.scenario || 'enrollment' }}
         run: |
           mkdir -p reports/stress
           locust \
