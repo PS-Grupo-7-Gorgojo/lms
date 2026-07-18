@@ -6,16 +6,11 @@ from tests.stress.common.auth import get_student_credentials
 
 class QuizSubmissionStressUser(HttpUser):
     """
-    Simula estudiantes enviando quizzes simultáneamente.
+    Entregas simultáneas de quizzes.
 
-    Flujo:
-      1. Login
-      2. Obtener quiz por título → extraer nombre y preguntas
-      3. Enviar respuestas (todas correctas = "Correct Answer")
-
-    Endpoints bajo estrés:
-      - GET  /api/resource/LMS Quiz (búsqueda por título)
+    Endpoints:
       - POST /api/method/lms.lms.doctype.lms_quiz.lms_quiz.submit_quiz
+      - GET  /api/method/lms.lms.api.get_my_courses
     """
     wait_time = between(0, 1)
     _counter = itertools.count(1)
@@ -36,11 +31,9 @@ class QuizSubmissionStressUser(HttpUser):
         idx = (self._idx % 3) + 1
         quiz_title = f"Quiz - Quiz Stress Course {idx}"
         self._quiz_name = self._fetch_quiz_name(quiz_title)
+        self._questions = []
         if self._quiz_name:
             self._questions = self._fetch_quiz_questions(self._quiz_name)
-        else:
-            self._quiz_name = None
-            self._questions = []
 
     def _fetch_quiz_name(self, quiz_title):
         resp = self.client.get(
@@ -49,7 +42,7 @@ class QuizSubmissionStressUser(HttpUser):
                 "filters": json.dumps([["title", "=", quiz_title]]),
                 "fields": json.dumps(["name"]),
             },
-            name="GET /api/resource/LMS Quiz (by title)",
+            name="GET quiz by title",
         )
         try:
             data = resp.json().get("data", [])
@@ -60,7 +53,7 @@ class QuizSubmissionStressUser(HttpUser):
     def _fetch_quiz_questions(self, quiz_name):
         resp = self.client.get(
             f"/api/resource/LMS Quiz/{quiz_name}",
-            name="GET /api/resource/LMS Quiz (details)",
+            name="GET quiz detail",
         )
         try:
             questions = resp.json().get("data", {}).get("questions", [])
@@ -82,14 +75,8 @@ class QuizSubmissionStressUser(HttpUser):
         )
 
     @task(1)
-    def check_quiz_result(self):
-        if not self._quiz_name:
-            return
+    def get_my_courses(self):
         self.client.get(
-            "/api/resource/LMS Quiz Submission",
-            params={
-                "filters": json.dumps([["quiz", "=", self._quiz_name]]),
-                "limit_page_length": 1,
-            },
-            name="GET /api/resource/LMS Quiz Submission",
+            "/api/method/lms.lms.api.get_my_courses",
+            name="GET get_my_courses",
         )

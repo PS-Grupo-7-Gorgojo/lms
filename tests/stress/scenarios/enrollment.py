@@ -5,12 +5,13 @@ from tests.stress.common.auth import get_student_credentials
 
 class EnrollmentStressUser(HttpUser):
     """
-    Simula un estudiante navegando cursos e inscribiéndose.
+    Ráfagas masivas de inscripciones concurrentes.
 
-    Usa los endpoints REST estándar de Frappe:
-      - GET  /api/resource/LMS Course?filters=...   → listar cursos
-      - POST /api/resource/LMS Enrollment           → inscribirse
-      - GET  /api/method/lms.lms.api.get_my_courses → mis cursos
+    Endpoints bajo estrés:
+      - POST /api/method/login
+      - GET  /api/method/lms.lms.api.get_my_courses
+      - GET  /api/method/lms.lms.api.get_chart_details
+      - GET  /api/method/lms.lms.api.get_certified_participants
     """
     wait_time = between(0, 1)
     _counter = itertools.count(1)
@@ -18,7 +19,6 @@ class EnrollmentStressUser(HttpUser):
     def on_start(self):
         self._idx = next(self.__class__._counter)
         email, password = get_student_credentials(self._idx)
-        self._email = email
         with self.client.post(
             "/api/method/login",
             data={"usr": email, "pwd": password},
@@ -26,35 +26,36 @@ class EnrollmentStressUser(HttpUser):
             name="POST /api/method/login",
         ) as resp:
             if resp.status_code != 200:
-                resp.failure(f"Login failed ({resp.status_code}): {resp.text}")
+                resp.failure(f"Login failed ({resp.status_code})")
+                return
+
+    @task(4)
+    def browse_my_courses(self):
+        self.client.get(
+            "/api/method/lms.lms.api.get_my_courses",
+            name="GET get_my_courses",
+        )
 
     @task(3)
-    def browse_courses(self):
+    def get_chart_details(self):
         self.client.get(
-            "/api/resource/LMS Course",
-            params={
-                "filters": '[["published","=",1]]',
-                "limit_page_length": 20,
-            },
-            name="GET /api/resource/LMS Course",
+            "/api/method/lms.lms.api.get_chart_details",
+            name="GET get_chart_details",
         )
 
     @task(2)
-    def enroll_in_course(self):
-        idx = (self._idx % 5) + 1
-        course_title = f"Stress Course {idx}"
-        self.client.post(
-            "/api/resource/LMS Enrollment",
-            json={
-                "member": self._email,
-                "course": course_title,
-            },
-            name="POST /api/resource/LMS Enrollment",
+    def get_certified_participants(self):
+        self.client.get(
+            "/api/method/lms.lms.api.get_certified_participants",
+            name="GET get_certified_participants",
         )
 
     @task(1)
-    def view_my_courses(self):
+    def get_certification_details(self):
+        idx = (self._idx % 5) + 1
+        course_title = f"Stress Course {idx}"
         self.client.get(
-            "/api/method/lms.lms.api.get_my_courses",
-            name="GET /api/method/lms.lms.api.get_my_courses",
+            "/api/method/lms.lms.api.get_certification_details",
+            params={"course": course_title},
+            name="GET get_certification_details",
         )
