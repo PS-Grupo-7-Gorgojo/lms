@@ -32,12 +32,12 @@ class EnrollmentStressUser(HttpUser):
                 self._logged_in = True
 
     @task(4)
-    def browse_my_courses(self):
+    def get_certified_participants(self):
         if not self._logged_in:
             return
         self.client.get(
-            "/api/method/lms.lms.api.get_my_courses",
-            name="GET get_my_courses",
+            "/api/method/lms.lms.api.get_certified_participants",
+            name="GET get_certified_participants",
         )
 
     @task(3)
