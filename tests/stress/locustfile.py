@@ -14,7 +14,7 @@ Scenarios:
     - enrollment       : Ráfagas de inscripciones concurrentes
     - certificate      : Solicitudes masivas de certificados
     - quiz_submission  : Entregas simultáneas de quizzes
-    - course_access    : Acceso concurrente a cursos y evaluaciones (TODO)
+    - course_access    : Acceso concurrente a cursos y evaluaciones
     - redis_queue      : Saturación de colas Redis/RQ (TODO)
 """
 
@@ -24,11 +24,13 @@ from locust import events
 from tests.stress.scenarios.enrollment import EnrollmentStressUser
 from tests.stress.scenarios.certificate import CertificateStressUser
 from tests.stress.scenarios.quiz_submission import QuizSubmissionStressUser
+from tests.stress.scenarios.course_access import CourseAccessStressUser
 
 _SCENARIO_MAP = {
     "enrollment": EnrollmentStressUser,
     "certificate": CertificateStressUser,
     "quiz_submission": QuizSubmissionStressUser,
+    "course_access": CourseAccessStressUser,
 }
 
 user_classes = list(_SCENARIO_MAP.values())
