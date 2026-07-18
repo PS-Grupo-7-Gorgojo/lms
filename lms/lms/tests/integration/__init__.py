@@ -15,3 +15,8 @@ from .test_course_deletion import TestCourseDeletion
 from .test_evaluations import TestQuizValidation
 from .test_search import TestSearchIntegration
 from .test_cache_invalidation import TestCacheInvalidation
+from .test_course_chapter import TestCourseChapterIntegration
+from .test_payments import TestPaymentIdempotency
+from .test_user import TestUserIntegration
+from .test_settings import TestSettingsIntegration
+from .test_integration_chain import TestIntegrationChain
