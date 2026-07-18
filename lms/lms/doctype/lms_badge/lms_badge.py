@@ -21,13 +21,6 @@ class LMSBadge(Document):
 			except Exception:
 				frappe.throw(_("Condition must be valid python code."))
 
-		frappe.cache_manager.clear_doctype_map("LMS Badge")
-		frappe.cache().delete_key("doctype_map_LMS Badge")
-
-	def on_trash(self):
-		frappe.cache_manager.clear_doctype_map("LMS Badge")
-		frappe.cache().delete_key("doctype_map_LMS Badge")
-
 	def apply(self, doc):
 		if self.rule_condition_satisfied(doc):
 			award(self, doc.get(self.user_field))
