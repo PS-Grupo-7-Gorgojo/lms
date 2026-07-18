@@ -10,8 +10,8 @@ on:
       - develop
 
 jobs:
-  unit-tests:
-    name: Server Unit Tests
+  tests-suite:
+    name: Server Tests Suite
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -112,6 +112,12 @@ jobs:
         working-directory: /home/runner/frappe-bench
         run: bench --site frappe.local run-tests --app lms --coverage
 
+      - name: Run integration tests
+        working-directory: /home/runner/frappe-bench
+        env:
+          RUN_INTEGRATION_TESTS: "1"
+        run: bench --site frappe.local run-tests --app lms --module lms.lms.tests.integration
+
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -120,7 +126,7 @@ jobs:
 
   coverage:
     name: Coverage Wrap Up
-    needs: unit-tests
+    needs: tests-suite
     runs-on: ubuntu-latest
 
     steps:
