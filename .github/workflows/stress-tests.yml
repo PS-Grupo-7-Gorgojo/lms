@@ -1,0 +1,159 @@
+name: Stress Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: "Número de usuarios concurrentes"
+        required: false
+        default: "200"
+        type: string
+      spawn_rate:
+        description: "Usuarios incorporados por segundo"
+        required: false
+        default: "50"
+        type: string
+      duration:
+        description: "Duración (ej. 120s, 5m)"
+        required: false
+        default: "120s"
+        type: string
+      scenario:
+        description: "Escenario de estrés"
+        required: false
+        default: "enrollment"
+        type: choice
+        options:
+          - enrollment
+          - certificate
+          - quiz_submission
+          - course_access
+          - redis_queue
+      host:
+        description: "URL del servidor a probar"
+        required: false
+        default: "http://lms.test:8000"
+        type: string
+
+  push:
+    branches:
+      - feature/lms-stress-tests
+
+permissions:
+  contents: read
+
+jobs:
+  stress:
+    name: "Stress Test — ${{ github.event.inputs.scenario || 'enrollment' }} (${{ github.event.inputs.users || 200 }} users, ${{ github.event.inputs.duration || '120s' }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      redis-cache:
+        image: redis:alpine
+        ports:
+          - 13000:6379
+
+      redis-queue:
+        image: redis:alpine
+        ports:
+          - 11000:6379
+
+      redis-socketio:
+        image: redis:alpine
+        ports:
+          - 12000:6379
+
+      mariadb:
+        image: mariadb:10.8
+        ports:
+          - 3306:3306
+        env:
+          MARIADB_ROOT_PASSWORD: "123"
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          check-latest: true
+
+      - name: Add to Hosts
+        run: echo "127.0.0.1 lms.test" | sudo tee -a /etc/hosts
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-stress-${{ hashFiles('tests/stress/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache Bench
+        uses: actions/cache@v4
+        with:
+          path: ~/bench-cache
+          key: ${{ runner.os }}-bench-stress
+
+      - name: Install Bench
+        run: pip3 install frappe-bench
+
+      - name: Initialize Bench
+        run: |
+          if [ -f ~/bench-cache/bench.tgz ]
+          then
+            (cd && tar xzf ~/bench-cache/bench.tgz)
+          else
+            bench init ~/frappe-bench --skip-redis-config-generation --skip-assets --python "$(which python)"
+            mkdir -p ~/bench-cache
+            (cd && tar czf ~/bench-cache/bench.tgz frappe-bench)
+          fi
+
+      - name: Install Apps & Site
+        run: |
+          bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
+          bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
+
+      - name: Seed stress test data
+        working-directory: /home/runner/frappe-bench
+        run: bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_enrollment_data
+
+      - name: Install Locust
+        run: pip3 install locust
+
+      - name: Run stress tests
+        working-directory: /home/runner/frappe-bench/apps/lms
+        run: |
+          mkdir -p reports/stress
+          locust \
+            -f tests/stress/locustfile.py \
+            --headless \
+            -u ${{ github.event.inputs.users || 200 }} \
+            -r ${{ github.event.inputs.spawn_rate || 50 }} \
+            -t ${{ github.event.inputs.duration || '120s' }} \
+            --host ${{ github.event.inputs.host || 'http://lms.test:8000' }} \
+            --csv=reports/stress \
+            --html=reports/stress.html \
+            --loglevel=INFO
+
+      - name: Upload stress test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-reports-${{ github.event.inputs.scenario || 'enrollment' }}-${{ github.run_id }}
+          path: /home/runner/frappe-bench/apps/lms/reports/stress/
+
+      - name: Stop bench server
+        if: ${{ always() }}
+        run: |
+          ps -ef | grep "[f]rappe serve" | awk '{print $2}' | xargs kill -s SIGINT 2>/dev/null || true
+          sleep 3
