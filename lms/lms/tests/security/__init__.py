@@ -1,0 +1,6 @@
+from .test_sec_lms_001 import TestSecuritySECLMS001
+from .test_sec_lms_002 import TestSecuritySECLMS002
+from .test_sec_lms_003 import TestSecuritySECLMS003
+from .test_sec_lms_004 import TestSecuritySECLMS004
+from .test_sec_lms_005 import TestSecuritySECLMS005
+from .test_sec_lms_006 import TestSecuritySECLMS006
