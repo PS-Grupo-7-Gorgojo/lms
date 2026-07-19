@@ -1,7 +1,19 @@
 import itertools
 import json
+import os
 from locust import HttpUser, task, between
 from tests.stress.common.auth import get_student_credentials
+
+
+def _load_quiz_fixture():
+    fixture_path = os.path.join(
+        os.path.dirname(__file__), "..", "fixtures", "quiz_data.json"
+    )
+    try:
+        with open(fixture_path) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
 
 
 class QuizSubmissionStressUser(HttpUser):
@@ -11,9 +23,14 @@ class QuizSubmissionStressUser(HttpUser):
     Endpoints:
       - POST /api/method/lms.lms.doctype.lms_quiz.lms_quiz.submit_quiz
       - GET  /api/method/lms.lms.api.get_chart_details
+
+    Los datos de quizzes se cargan desde el fixture JSON generado
+    durante el seed, evitando llamadas REST que requieren permisos
+    de doctype.
     """
     wait_time = between(0, 1)
     _counter = itertools.count(1)
+    _quiz_fixture = _load_quiz_fixture()
 
     def on_start(self):
         self._idx = next(self.__class__._counter)
@@ -34,40 +51,16 @@ class QuizSubmissionStressUser(HttpUser):
     def _setup_quiz(self):
         idx = (self._idx % 3) + 1
         quiz_title = f"Quiz - Quiz Stress Course {idx}"
-        self._quiz_name = self._fetch_quiz_name(quiz_title)
-        self._questions = []
-        if self._quiz_name:
-            self._questions = self._fetch_quiz_questions(self._quiz_name)
-
-    def _fetch_quiz_name(self, quiz_title):
-        resp = self.client.get(
-            "/api/resource/LMS Quiz",
-            params={
-                "filters": json.dumps([["title", "=", quiz_title]]),
-                "fields": json.dumps(["name"]),
-            },
-            name="GET quiz by title",
-        )
-        try:
-            data = resp.json().get("data", [])
-            return data[0]["name"] if data else None
-        except Exception:
-            return None
-
-    def _fetch_quiz_questions(self, quiz_name):
-        resp = self.client.get(
-            f"/api/resource/LMS Quiz/{quiz_name}",
-            name="GET quiz detail",
-        )
-        try:
-            questions = resp.json().get("data", {}).get("questions", [])
-            return [{"question_name": q["question"], "answer": ["Correct Answer"]} for q in questions]
-        except Exception:
-            return []
+        self._quiz_name = quiz_title
+        questions = self.__class__._quiz_fixture.get(quiz_title, [])
+        self._questions = [
+            {"question_name": q["name"], "answer": ["Correct Answer"]}
+            for q in questions
+        ]
 
     @task(5)
     def submit_quiz(self):
-        if not self._logged_in or not self._quiz_name or not self._questions:
+        if not self._logged_in or not self._questions:
             return
         self.client.post(
             "/api/method/lms.lms.doctype.lms_quiz.lms_quiz.submit_quiz",

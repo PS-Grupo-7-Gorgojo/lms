@@ -5,6 +5,9 @@ Run via bench in CI:
     bench --site lms.test execute lms.lms.tests.stress_data_setup.seed_certificate_data
 """
 
+import json
+import os
+
 import frappe
 from frappe.utils.password import update_password
 from frappe.utils import nowdate
@@ -221,6 +224,7 @@ def seed_quiz_data(course_count=None, student_count=None):
                 enrollment.save(ignore_permissions=True)
 
     frappe.db.commit()
+    _write_quiz_fixture(_QUIZ_QUESTIONS_CACHE)
     quizzes = list(_QUIZ_QUESTIONS_CACHE.keys())
     return {"courses": courses, "students": students, "quizzes": quizzes, "password": USER_PASSWORD}
 
@@ -380,4 +384,17 @@ def seed_redis_queue_data(course_count=4, student_count=None):
         titles.append(title)
 
     frappe.db.commit()
+    _write_quiz_fixture(_QUIZ_QUESTIONS_CACHE)
     return {"courses": titles, "students": students, "password": USER_PASSWORD}
+
+
+def _write_quiz_fixture(cache):
+    app_path = frappe.get_app_path("lms")
+    fixture_dir = os.path.join(app_path, "tests", "stress", "fixtures")
+    os.makedirs(fixture_dir, exist_ok=True)
+    filepath = os.path.join(fixture_dir, "quiz_data.json")
+    data = {}
+    for quiz_name in cache:
+        data[quiz_name] = _get_question_names(quiz_name)
+    with open(filepath, "w") as f:
+        json.dump(data, f)
