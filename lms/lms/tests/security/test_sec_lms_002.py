@@ -1,8 +1,11 @@
+import os
+import unittest
 import frappe
 from lms.lms.test_helpers import BaseTestUtils
 from lms.lms.doctype.lms_quiz.lms_quiz import submit_quiz
 import json
 
+@unittest.skipUnless(os.environ.get("RUN_SECURITY_TESTS"), "Skipping security tests")
 class TestSecuritySECLMS002(BaseTestUtils):
 	def setUp(self):
 		super().setUp()

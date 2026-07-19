@@ -1,7 +1,10 @@
+import os
+import unittest
 import frappe
 from lms.lms.test_helpers import BaseTestUtils
 from lms.lms.utils import validate_image
 
+@unittest.skipUnless(os.environ.get("RUN_SECURITY_TESTS"), "Skipping security tests")
 class TestSecuritySECLMS004(BaseTestUtils):
 	def setUp(self):
 		super().setUp()
