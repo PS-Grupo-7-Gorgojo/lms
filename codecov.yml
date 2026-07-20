@@ -6,6 +6,11 @@ coverage:
         threshold: 1%
 
 ignore:
+  # --- Pruebas de estrés (NUEVO) ---
+  - "lms/lms/tests/stress_data_setup.py"
+  - "**/stress_data_setup.py"
+  - "**/tests/stress/**"
+  - "tests/stress/**"
   # --- Tus exclusiones globales originales ---
   - "**/test_*.py"  
   - "**/__init__.py"
