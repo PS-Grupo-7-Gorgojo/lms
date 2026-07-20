@@ -402,6 +402,12 @@ def _write_quiz_fixture(cache):
     filepath = os.path.join(fixture_dir, "quiz_data.json")
     data = {}
     for quiz_name in cache:
-        data[quiz_name] = _get_question_names(quiz_name)
+        quiz_title = frappe.db.get_value("LMS Quiz", quiz_name, "title")
+        if not quiz_title:
+            continue
+        data[quiz_title] = {
+            "name": quiz_name,
+            "questions": _get_question_names(quiz_name),
+        }
     with open(filepath, "w") as f:
         json.dump(data, f)
