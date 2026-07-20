@@ -51,8 +51,9 @@ class QuizSubmissionStressUser(HttpUser):
     def _setup_quiz(self):
         idx = (self._idx % 3) + 1
         quiz_title = f"Quiz - Quiz Stress Course {idx}"
-        self._quiz_name = quiz_title
-        questions = self.__class__._quiz_fixture.get(quiz_title, [])
+        data = self.__class__._quiz_fixture.get(quiz_title, {})
+        self._quiz_name = data.get("name")
+        questions = data.get("questions", [])
         self._questions = [
             {"question_name": q["name"], "answer": ["Correct Answer"]}
             for q in questions
