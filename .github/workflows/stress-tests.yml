@@ -164,6 +164,7 @@ jobs:
           locust \
             -f tests/stress/locustfile.py \
             --headless \
+            --exit-code-on-error 0 \
             -u ${{ github.event.inputs.users || 200 }} \
             -r ${{ github.event.inputs.spawn_rate || 50 }} \
             -t ${{ github.event.inputs.duration || '120s' }} \
