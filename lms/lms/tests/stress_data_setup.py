@@ -396,8 +396,7 @@ def seed_redis_queue_data(course_count=4, student_count=None):
 
 
 def _write_quiz_fixture(cache):
-    app_path = frappe.get_app_path("lms")
-    fixture_dir = os.path.join(app_path, "tests", "stress", "fixtures")
+    fixture_dir = os.environ.get("STRESS_FIXTURE_DIR", "/tmp/stress_fixtures")
     os.makedirs(fixture_dir, exist_ok=True)
     filepath = os.path.join(fixture_dir, "quiz_data.json")
     data = {}

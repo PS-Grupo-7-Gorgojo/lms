@@ -142,13 +142,13 @@ jobs:
 
       - name: Check fixture file
         run: |
-          FIXTURE="/home/runner/frappe-bench/apps/lms/tests/stress/fixtures/quiz_data.json"
+          FIXTURE="/tmp/stress_fixtures/quiz_data.json"
           if [ -f "$FIXTURE" ]; then
             echo "FIXTURE FOUND:"
             cat "$FIXTURE"
           else
             echo "FIXTURE NOT FOUND at $FIXTURE"
-            find /home/runner/frappe-bench/apps/lms/tests/stress/fixtures -type f 2>/dev/null || echo "(no fixtures dir)"
+            ls -la /tmp/stress_fixtures/ 2>/dev/null || echo "(no /tmp/stress_fixtures dir)"
           fi
 
       - name: Reset login trackers

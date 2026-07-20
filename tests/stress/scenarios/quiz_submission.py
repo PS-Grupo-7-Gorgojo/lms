@@ -6,7 +6,8 @@ from tests.stress.common.auth import get_student_credentials
 
 
 def _load_quiz_fixture():
-    fixture_path = os.path.join(os.getcwd(), "tests", "stress", "fixtures", "quiz_data.json")
+    fixture_dir = os.environ.get("STRESS_FIXTURE_DIR", "/tmp/stress_fixtures")
+    fixture_path = os.path.join(fixture_dir, "quiz_data.json")
     try:
         with open(fixture_path) as f:
             return json.load(f)
