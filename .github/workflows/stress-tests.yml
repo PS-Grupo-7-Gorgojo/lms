@@ -140,6 +140,17 @@ jobs:
       - name: Install Locust
         run: pip3 install locust
 
+      - name: Check fixture file
+        run: |
+          FIXTURE="/home/runner/frappe-bench/apps/lms/tests/stress/fixtures/quiz_data.json"
+          if [ -f "$FIXTURE" ]; then
+            echo "FIXTURE FOUND:"
+            cat "$FIXTURE"
+          else
+            echo "FIXTURE NOT FOUND at $FIXTURE"
+            find /home/runner/frappe-bench/apps/lms/tests/stress/fixtures -type f 2>/dev/null || echo "(no fixtures dir)"
+          fi
+
       - name: Reset login trackers
         working-directory: /home/runner/frappe-bench
         run: bench --site lms.test execute lms.lms.tests.stress_data_setup.reset_login_trackers
