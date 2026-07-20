@@ -224,9 +224,15 @@ def seed_quiz_data(course_count=None, student_count=None):
                 enrollment.save(ignore_permissions=True)
 
     frappe.db.commit()
+    _populate_quiz_cache()
     _write_quiz_fixture(_QUIZ_QUESTIONS_CACHE)
     quizzes = list(_QUIZ_QUESTIONS_CACHE.keys())
     return {"courses": courses, "students": students, "quizzes": quizzes, "password": USER_PASSWORD}
+
+
+def _populate_quiz_cache():
+    for quiz_name in list(_QUIZ_QUESTIONS_CACHE.keys()):
+        _QUIZ_QUESTIONS_CACHE[quiz_name] = _get_question_names(quiz_name)
 
 
 def _create_quiz_courses(count):
@@ -252,7 +258,7 @@ def _create_quiz_courses(count):
         chapter = _create_chapter(title, course.name)
         lesson = _create_lesson(f"Lesson 1 - {title}", chapter.name, course.name)
         quiz = _create_quiz(f"Quiz - {title}", lesson.name, course.name)
-        _QUIZ_QUESTIONS_CACHE[quiz] = _get_question_names(quiz)
+        _QUIZ_QUESTIONS_CACHE[quiz] = []
 
         created.append(title)
     return created
@@ -384,17 +390,23 @@ def seed_redis_queue_data(course_count=4, student_count=None):
         titles.append(title)
 
     frappe.db.commit()
+    _populate_quiz_cache()
     _write_quiz_fixture(_QUIZ_QUESTIONS_CACHE)
     return {"courses": titles, "students": students, "password": USER_PASSWORD}
 
 
 def _write_quiz_fixture(cache):
-    app_path = frappe.get_app_path("lms")
-    fixture_dir = os.path.join(app_path, "tests", "stress", "fixtures")
+    fixture_dir = os.environ.get("STRESS_FIXTURE_DIR", "/tmp/stress_fixtures")
     os.makedirs(fixture_dir, exist_ok=True)
     filepath = os.path.join(fixture_dir, "quiz_data.json")
     data = {}
     for quiz_name in cache:
-        data[quiz_name] = _get_question_names(quiz_name)
+        quiz_title = frappe.db.get_value("LMS Quiz", quiz_name, "title")
+        if not quiz_title:
+            continue
+        data[quiz_title] = {
+            "name": quiz_name,
+            "questions": _get_question_names(quiz_name),
+        }
     with open(filepath, "w") as f:
         json.dump(data, f)

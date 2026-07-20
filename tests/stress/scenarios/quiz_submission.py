@@ -6,9 +6,8 @@ from tests.stress.common.auth import get_student_credentials
 
 
 def _load_quiz_fixture():
-    fixture_path = os.path.join(
-        os.path.dirname(__file__), "..", "fixtures", "quiz_data.json"
-    )
+    fixture_dir = os.environ.get("STRESS_FIXTURE_DIR", "/tmp/stress_fixtures")
+    fixture_path = os.path.join(fixture_dir, "quiz_data.json")
     try:
         with open(fixture_path) as f:
             return json.load(f)
@@ -51,8 +50,9 @@ class QuizSubmissionStressUser(HttpUser):
     def _setup_quiz(self):
         idx = (self._idx % 3) + 1
         quiz_title = f"Quiz - Quiz Stress Course {idx}"
-        self._quiz_name = quiz_title
-        questions = self.__class__._quiz_fixture.get(quiz_title, [])
+        data = self.__class__._quiz_fixture.get(quiz_title, {})
+        self._quiz_name = data.get("name")
+        questions = data.get("questions", [])
         self._questions = [
             {"question_name": q["name"], "answer": ["Correct Answer"]}
             for q in questions
